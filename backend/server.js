@@ -5,7 +5,8 @@ const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 const authRouter = require("./modules/auth/routers/auth.routers");
-const paymentRouter = require("./modules/payment/routers/payment.routes");
+const profileRouters = require("./modules/profile/routers/profile.routes");
+// const paymentRouter = require("./modules/payment/routers/payment.routes");
 
 const app = express();
 const PORT = process.env.PORT || 8000;
@@ -39,7 +40,8 @@ app.get("/api/test", (req, res) => {
 });
 
 app.use('/api/auth', authRouter);
-app.use('/api/payment', paymentRouter);
+app.use('/api/profile', profileRouters);
+// app.use('/api/payment', paymentRouter);
 
 
 const startServer = async () => {

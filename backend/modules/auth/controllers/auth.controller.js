@@ -5,6 +5,8 @@ const User = require("../models/auth.model");
 const RefreshToken = require("../models/auth.refreshToken");
 const sendEmail = require("../../../utils/sendEmail");
 const verifyEmailTemplate = require("../../../utils/Emails/emailVerificationTemplate");
+const UserProfile = require("../../profile/models/profile.models");
+
 
 const cookieOptions = {
     httpOnly: true,
@@ -49,6 +51,9 @@ const register = async (req, res) => {
         user.emailVerificationToken = hashedVerifyToken;
         user.emailVerificationExpire = Date.now() + 24 * 60 * 60 * 1000;
         await user.save();
+        await UserProfile.create({
+       userId: user._id,
+       });
         const verifyUrl = `${process.env.FRONTEND_URL}/auth/verify-email/${verifyToken}`;
         await sendEmail({
             to: user.email,
