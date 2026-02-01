@@ -32,20 +32,20 @@ const authSchema = mongoose.Schema(
             default: "local",
         },
 
-        googleId: { type: String },
+        // googleId: { type: String },
 
-        access: {
-            type: {
-                type: String,
-                enum: ["NONE", "LIFETIME", "TIME_BASED"],
-                default: "NONE",
-            },
-            startDate: { type: Date },
-            endDate: { type: Date },
-            isActive: { type: Boolean, default: false },
-        },
+        // access: {
+        //     type: {
+        //         type: String,
+        //         enum: ["NONE", "LIFETIME", "TIME_BASED"],
+        //         default: "NONE",
+        //     },
+        //     startDate: { type: Date },
+        //     endDate: { type: Date },
+        //     isActive: { type: Boolean, default: false },
+        // },
 
-        lastPaymentAt: { type: Date },
+        // lastPaymentAt: { type: Date },
 
         rememberMe: { type: Boolean, default: false },
         resetPasswordToken: { type: String },

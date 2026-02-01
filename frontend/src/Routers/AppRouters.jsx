@@ -16,6 +16,7 @@ import PaymentPage from "../pages/payment/PaymentPage";
 import PaymentSuccessPage from "../pages/payment/PaymentSuccessPage";
 import AdminPaymentsPage from "../pages/Admin/AdminPaymentsPage";
 import RequireAdmin from "../components/RequireAdmin";
+// import FeedPage from "../pages/Home/FeedPage";
 
 const AppRouters = () => {
     return (
