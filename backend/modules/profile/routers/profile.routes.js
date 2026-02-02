@@ -6,12 +6,14 @@ const { toggleVisibility } = require('../controllers/toggleVisibility.controller
 const { getMyProfile } = require('../controllers/getMyProfile.controller');
 const { uploadAvatar } = require('../controllers/uploadAvatar.controller');
 const upload = require('../middlewares/upload.middleware');
+const { getPublicProfiles } = require('../controllers/getPublicProfiles.controller');
 
 const profileRouters = express.Router();
 
 profileRouters.get("/me", protect, getMyProfile);
 profileRouters.put("/", protect, updateMyProfile);
 profileRouters.patch("/visibility", protect, toggleVisibility);
+profileRouters.get("/public", getPublicProfiles);
 profileRouters.get("/:userId", getProfileByUserId);
 profileRouters.post(
   "/avatar",

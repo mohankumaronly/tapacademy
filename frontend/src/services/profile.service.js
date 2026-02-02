@@ -8,6 +8,14 @@ export const updateProfile = (data) => {
   return api.put("/profile", data);
 };
 
+export const getPublicProfiles = () => {
+  return api.get("/profile/public");
+};
+
+export const getProfileById = (userId) => {
+  return api.get(`/profile/${userId}`);
+};
+
 export const uploadAvatar = (file) => {
   const formData = new FormData();
   formData.append("avatar", file);
