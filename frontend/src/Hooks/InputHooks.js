@@ -18,6 +18,7 @@ const useInputText = (InitialValues) => {
     return {
         formData,
         onChange,
+        setFormData,
         reset
     }
 }

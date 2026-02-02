@@ -26,6 +26,13 @@ const HomePage = () => {
           type="button"
           onClick={handleLogout}
         />
+        < Button
+          text="Profile"
+          type="button"
+          onClick={() => {
+            navigate("/home/profile");
+          }}
+        />
       </>
     </HomePageLayout>
   );

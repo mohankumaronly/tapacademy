@@ -4,6 +4,7 @@ const crypto = require("crypto");
 const User = require("../models/auth.model");
 const querystring = require("querystring");
 const RefreshToken = require("../models/auth.refreshToken");
+const UserProfile = require("../../profile/models/profile.models");
 
 const cookieOptions = {
     httpOnly: true,
@@ -109,6 +110,12 @@ const googleAuthCallback = async (req, res) => {
                 isEmailVerified: true,
             });
         }
+
+         await UserProfile.findOneAndUpdate(
+            { userId: user._id },
+            { userId: user._id },
+            { upsert: true, new: true }
+        );
 
         const accessToken = jwt.sign(
             { userId: user._id },
