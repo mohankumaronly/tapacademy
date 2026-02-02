@@ -3,7 +3,11 @@ import { useAuth } from "../../context/AuthContext";
 import useInputText from "../../Hooks/InputHooks";
 import InputText from "../../common/InputText";
 import ProfileLayout from "../../layouts/ProfileLayout";
-import { getMyProfile, updateProfile } from "../../services/profile.service";
+import {
+  getMyProfile,
+  updateProfile,
+  uploadAvatar,
+} from "../../services/profile.service";
 
 const ProfilePage = () => {
   const { user, loading } = useAuth();
@@ -20,10 +24,12 @@ const ProfilePage = () => {
     batchName: "",
     location: "",
     isProfilePublic: true,
+    avatarUrl: "", 
   });
 
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -44,14 +50,49 @@ const ProfilePage = () => {
           batchName: profile.batchName || "",
           location: profile.location || "",
           isProfilePublic: profile.isProfilePublic ?? true,
+          avatarUrl: profile.avatarUrl || "", 
         });
       })
       .catch((err) => {
-        if (err.response?.status !== 404) {
-          console.error(err);
-        }
+        if (err.response?.status !== 404) console.error(err);
       });
   }, [user]);
+
+ const handleAvatarUpload = async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  
+  if (!file.type.startsWith("image/")) {
+    alert("Please select an image file");
+    return;
+  }
+
+  if (file.size > 10 * 1024 * 1024) {
+    alert("Image must be under 10MB");
+    return;
+  }
+
+  try {
+    setUploadingAvatar(true);
+
+    const res = await uploadAvatar(file);
+
+    if (res.data?.success) {
+      setFormData((prev) => ({
+        ...prev,
+        avatarUrl: res.data.data.avatarUrl,
+      }));
+    } else {
+      throw new Error("Upload failed");
+    }
+  } catch (err) {
+    console.error(err);
+    alert("Avatar upload failed");
+  } finally {
+    setUploadingAvatar(false);
+  }
+};
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -107,6 +148,24 @@ const ProfilePage = () => {
           User Profile
         </h1>
 
+        <div className="flex flex-col items-center mb-6">
+          <img
+            src={formData.avatarUrl || "/avatar-placeholder.png"}
+            alt="avatar"
+            className="w-24 h-24 rounded-full object-cover mb-3 border"
+          />
+
+          <label className="text-sm text-blue-600 cursor-pointer">
+            {uploadingAvatar ? "Uploading..." : "Change Avatar"}
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={handleAvatarUpload}
+            />
+          </label>
+        </div>
+
         <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
           <InputText label="First Name" value={user.firstName} readOnly />
           <InputText label="Last Name" value={user.lastName} readOnly />
@@ -137,7 +196,7 @@ const ProfilePage = () => {
             {message}
           </div>
         )}
-        
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <InputText name="headline" label="Headline" value={formData.headline} onChange={onChange} />
           <InputText name="bio" label="Bio" value={formData.bio} onChange={onChange} />
