@@ -6,6 +6,7 @@ const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
 const authRouter = require("./modules/auth/routers/auth.routers");
 const profileRouters = require("./modules/profile/routers/profile.routes");
+const postRouter = require("./modules/posts/Routes/Post.Routes");
 // const paymentRouter = require("./modules/payment/routers/payment.routes");
 
 const app = express();
@@ -41,6 +42,7 @@ app.get("/api/test", (req, res) => {
 
 app.use('/api/auth', authRouter);
 app.use('/api/profile', profileRouters);
+app.use('/api/post', postRouter)
 // app.use('/api/payment', paymentRouter);
 
 

@@ -36,9 +36,6 @@ export const submitPayment = (data) => {
   return api.post("/payment/verify", data);
 };
 
-// export const getAllPayments = () => {
-//   return api.get('payment/admin/payments')
-// }
 export const approvePayment = (paymentId) => {
   return api.post(`/payment/admin/payments/${paymentId}/approve`);
 };
