@@ -72,12 +72,18 @@ const FeedPage = () => {
             </video>
           )}
 
-         <button
-            onClick={() => handleLike(post._id)}
-            className="mt-3 flex items-center gap-1 text-sm text-gray-700 hover:text-red-600 transition"
+        <button
+        onClick={() => handleLike(post._id)}
+        className={`mt-3 flex items-center gap-1 text-sm transition active:scale-125 
+            ${post.likes.length > 0 ? "text-red-600" : "text-gray-700 hover:text-red-600"}
+        `}
         >
-        <Heart className="w-5 h-5" />
-         <span>{post.likes.length}</span>
+        <Heart
+            className={`w-5 h-5 transition-all duration-300 
+            ${post.likes.length > 0 ? "fill-red-600 scale-110" : "fill-none"}
+            `}
+        />
+        <span>{post.likes.length}</span>
         </button>
 
         </div>
