@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import Loading from "../../components/Loading";
 import { Heart } from "lucide-react";
 import { feed, likePost } from "../../services/post.service";
+import { useNavigate } from "react-router-dom";
 
 const FeedPage = () => {
+    const navigate = useNavigate();
+
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,16 +39,21 @@ const FeedPage = () => {
       {posts.map(post => (
         <div key={post._id} className="bg-white shadow rounded-lg p-4">
 
-          <div className="flex items-center gap-3 mb-2">
-            <img
-             src={post.authorProfile?.avatarUrl || "/avatar-placeholder.png"}
-              alt="avatar"
-              className="w-10 h-10 rounded-full object-cover"
-            />
-            <p className="font-medium">
-              {post.author?.firstName} {post.author?.lastName}
-            </p>
-          </div>
+        <div
+        className="flex items-center gap-3 mb-2 cursor-pointer hover:opacity-80 transition"
+        onClick={() => navigate(`/profile/${post.author._id}`)}
+        >
+        <img
+            src={post.authorProfile?.avatarUrl || "/avatar-placeholder.png"}
+            alt="avatar"
+            className="w-10 h-10 rounded-full object-cover"
+        />
+
+        <p className="font-medium">
+            {post.author?.firstName} {post.author?.lastName}
+        </p>
+        </div>
+
 
           {post.text && (
             <p className="mb-3 text-gray-800">{post.text}</p>
@@ -57,7 +65,7 @@ const FeedPage = () => {
               className="rounded-lg w-full max-h-[400px] object-cover"
             />
           )}
-          
+
           {post.postType === "video" && post.media?.url && (
             <video controls className="rounded-lg w-full max-h-[400px]">
               <source src={post.media.url} />
