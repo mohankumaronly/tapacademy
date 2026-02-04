@@ -9,6 +9,12 @@ const postSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    
+    authorProfile: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "UserProfile",
+      required: true,
+    },
 
     text: {
       type: String,
@@ -52,7 +58,7 @@ const postSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, 
+    timestamps: true,
   }
 );
 

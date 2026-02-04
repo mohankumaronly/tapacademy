@@ -19,6 +19,8 @@ import RequireAdmin from "../components/RequireAdmin";
 import ProfilePage from "../pages/Home/ProfilePage";
 import PublicProfilePage from "../pages/Home/PublicProfilePage";
 import PublicProfilesPage from "../pages/Home/PublicProfilesPage";
+import CreatePostPage from "../pages/posts/CreatePostPage";
+import FeedPage from "../pages/posts/FeedPage";
 
 const AppRouters = () => {
   return (
@@ -72,6 +74,23 @@ const AppRouters = () => {
         element={
           <RequireAuth>
             <PublicProfilesPage />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/home/create-post"
+        element={
+          <RequireAuth>
+            <CreatePostPage />
+          </RequireAuth>
+        }
+      />
+      <Route
+        path="/home/feed"
+        element={
+          <RequireAuth>
+            <FeedPage />
           </RequireAuth>
         }
       />

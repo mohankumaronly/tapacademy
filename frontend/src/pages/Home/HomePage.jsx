@@ -36,11 +36,23 @@ const HomePage = () => {
           onClick={() => navigate("/home/public-profiles")}
         />
 
+         <Button
+          text="Create Post"
+          type="button"
+          onClick={() => navigate("/home/create-post")}
+        />
+         <Button
+          text="feeds"
+          type="button"
+          onClick={() => navigate("/home/feed")}
+        />
+
         <Button
           text="Logout"
           type="button"
           onClick={handleLogout}
         />
+        
       </div>
     </HomePageLayout>
   );

@@ -1,13 +1,23 @@
 const fs = require("fs");
 const Post = require("../models/post.model");
 const cloudinary = require("../../../utils/cloudinary");
+const UserProfile = require("../../profile/models/profile.models");
 
 exports.createPost = async (req, res) => {
   try {
     const userId = req.user.userId;
     const { text } = req.body;
 
-    if (!text || !text.trim()) {
+    const profile = await UserProfile.findOne({ userId });
+
+    if (!profile) {
+      return res.status(400).json({
+        success: false,
+        message: "Profile not found",
+      });
+    }
+
+    if (!text?.trim()) {
       return res.status(400).json({
         success: false,
         message: "Post text is required",
@@ -21,26 +31,14 @@ exports.createPost = async (req, res) => {
       const isImage = req.file.mimetype.startsWith("image/");
       const isVideo = req.file.mimetype.startsWith("video/");
 
-      if (!isImage && !isVideo) {
-        return res.status(400).json({
-          success: false,
-          message: "Only image or video files are allowed",
-        });
-      }
-
       postType = isImage ? "image" : "video";
 
-      const uploadResult = await cloudinary.uploader.upload(
-        req.file.path,
-        {
-          folder: "posts",
-          resource_type: isVideo ? "video" : "image",
-        }
-      );
+      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+        folder: "posts",
+        resource_type: isVideo ? "video" : "image",
+      });
 
-      if (fs.existsSync(req.file.path)) {
-        fs.unlinkSync(req.file.path);
-      }
+      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
 
       media = {
         type: postType,
@@ -50,23 +48,22 @@ exports.createPost = async (req, res) => {
 
     const post = await Post.create({
       author: userId,
+      authorProfile: profile._id,
       text: text.trim(),
       postType,
       media,
     });
 
-    return res.status(201).json({
+    res.status(201).json({
       success: true,
       data: post,
     });
   } catch (error) {
-    console.error("Create Post Error:", error);
-
     if (req.file?.path && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);
     }
 
-    return res.status(500).json({
+    res.status(500).json({
       success: false,
       message: "Failed to create post",
     });
