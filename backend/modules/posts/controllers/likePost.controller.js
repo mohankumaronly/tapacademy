@@ -3,7 +3,7 @@ const Post = require("../models/post.model");
 exports.toggleLike = async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { postId } = req.params;
+    const postId = req.params.postId;
 
     const post = await Post.findById(postId);
 
@@ -17,24 +17,23 @@ exports.toggleLike = async (req, res) => {
     const alreadyLiked = post.likes.includes(userId);
 
     if (alreadyLiked) {
-      post.likes = post.likes.filter(
-        (id) => id.toString() !== userId
-      );
+      post.likes.pull(userId);
     } else {
-      post.likes.push(userId);
+      post.likes.push(userId); 
     }
 
     await post.save();
 
     res.json({
       success: true,
-      likesCount: post.likes.length,
       liked: !alreadyLiked,
+      likesCount: post.likes.length,
     });
-  } catch (err) {
+  } catch (error) {
+    console.error("Like error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to like post",
+      message: "Failed to toggle like",
     });
   }
 };

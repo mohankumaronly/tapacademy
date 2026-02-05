@@ -9,7 +9,7 @@ const postRouter = express.Router();
 
 postRouter.post('/',
     protect,
-     upload.single("media"),
+    upload.single("media"),
     createPost,
 );
 postRouter.get("/feed", protect, getFeed);
