@@ -16,4 +16,13 @@ export const likePost = (postId) => {
   return api.post(`/post/${postId}/like`);
 };
 
+export const updatePost = (id, text) => {
+  return api.put(`/post/${id}`, { text });
+};
+
+export const deletePost = (id) => {
+  return api.delete(`/post/${id}`);
+};
+
+
 

@@ -1,12 +1,26 @@
 import { useEffect, useState } from "react";
-import { Heart, MessageCircle } from "lucide-react";
+import {
+  Heart,
+  MessageCircle,
+  MoreVertical,
+  Check,
+  X,
+} from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
 import Loading from "../../components/Loading";
-import { feed, likePost } from "../../services/post.service";
+import {
+  feed,
+  likePost,
+  updatePost,
+  deletePost,
+} from "../../services/post.service";
 import { addComment, getComments } from "../../services/comment.service";
+import { useAuth } from "../../context/AuthContext";
 
 const FeedPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -16,29 +30,37 @@ const FeedPage = () => {
   const [commentText, setCommentText] = useState({});
   const [loadingComments, setLoadingComments] = useState({});
 
+  const [menuOpen, setMenuOpen] = useState(null);
+  const [editingPost, setEditingPost] = useState(null);
+  const [editText, setEditText] = useState("");
+
+  /* ---------------- LOAD FEED ---------------- */
+
   useEffect(() => {
     feed()
       .then(res => setPosts(res.data.data))
       .finally(() => setLoading(false));
   }, []);
 
+  /* ---------------- LIKE (OPTIMISTIC) ---------------- */
+
   const handleLike = async (postId) => {
-    setPosts(prev =>
-      prev.map(p =>
-        p._id === postId
-          ? { ...p, likes: [...p.likes, "temp"] }
-          : p
+    setPosts(p =>
+      p.map(post =>
+        post._id === postId
+          ? { ...post, likes: [...post.likes, user.id] }
+          : post
       )
     );
 
     try {
       const res = await likePost(postId);
 
-      setPosts(prev =>
-        prev.map(p =>
-          p._id === postId
-            ? { ...p, likes: Array(res.data.likesCount).fill(1) }
-            : p
+      setPosts(p =>
+        p.map(post =>
+          post._id === postId
+            ? { ...post, likes: Array(res.data.likesCount).fill(1) }
+            : post
         )
       );
     } catch {
@@ -46,156 +68,239 @@ const FeedPage = () => {
     }
   };
 
+  /* ---------------- COMMENTS ---------------- */
+
   const toggleComments = async (postId) => {
-    setOpenComments(prev => ({
-      ...prev,
-      [postId]: !prev[postId],
-    }));
+    setOpenComments(p => ({ ...p, [postId]: !p[postId] }));
 
     if (comments[postId]) return;
 
-    setLoadingComments(prev => ({ ...prev, [postId]: true }));
+    setLoadingComments(p => ({ ...p, [postId]: true }));
 
     try {
       const res = await getComments(postId);
-      setComments(prev => ({
-        ...prev,
-        [postId]: res.data.data,
-      }));
+      setComments(p => ({ ...p, [postId]: res.data.data }));
     } finally {
-      setLoadingComments(prev => ({ ...prev, [postId]: false }));
+      setLoadingComments(p => ({ ...p, [postId]: false }));
     }
   };
 
   const handleAddComment = async (postId) => {
-    if (!commentText[postId]?.trim()) return;
+    const text = commentText[postId];
+    if (!text?.trim()) return;
 
-    const res = await addComment(postId, commentText[postId]);
+    const res = await addComment(postId, text);
 
-    setComments(prev => ({
-      ...prev,
-      [postId]: [res.data.data, ...(prev[postId] || [])],
+    setComments(p => ({
+      ...p,
+      [postId]: [res.data.data, ...(p[postId] || [])],
     }));
 
-    setCommentText(prev => ({ ...prev, [postId]: "" }));
+    setCommentText(p => ({ ...p, [postId]: "" }));
   };
 
-  if (loading) return <Loading />;
+  /* ---------------- EDIT ---------------- */
+
+  const startEdit = (post) => {
+    setEditingPost(post._id);
+    setEditText(post.text);
+    setMenuOpen(null);
+  };
+
+  const saveEdit = async (postId) => {
+    if (!editText.trim()) return;
+
+    const res = await updatePost(postId, editText);
+
+    setPosts(p =>
+      p.map(post => (post._id === postId ? res.data.data : post))
+    );
+
+    setEditingPost(null);
+    setEditText("");
+  };
+
+  /* ---------------- DELETE ---------------- */
+
+  const handleDelete = async (postId) => {
+    await deletePost(postId);
+    setPosts(p => p.filter(post => post._id !== postId));
+  };
+
+  /* ---------------- UI ---------------- */
+
+  if (loading || !user) return <Loading />;
 
   return (
     <div className="max-w-2xl mx-auto p-6 space-y-6">
 
-      {posts.map(post => (
-        <div key={post._id} className="bg-white shadow rounded-lg p-4">
+      {posts.map(post => {
+        const isOwner = String(post.author._id) === String(user.id);
 
-          <div
-            className="flex items-center gap-3 mb-2 cursor-pointer hover:opacity-80 transition"
-            onClick={() => navigate(`/profile/${post.author._id}`)}
-          >
-            <img
-              src={post.authorProfile?.avatarUrl || "/avatar-placeholder.png"}
-              className="w-10 h-10 rounded-full object-cover"
-              alt="avatar"
-            />
+        return (
+          <div key={post._id} className="bg-white shadow rounded-lg p-4">
 
-            <p className="font-medium">
-              {post.author?.firstName} {post.author?.lastName}
-            </p>
-          </div>
+            {/* HEADER */}
+            <div className="flex justify-between mb-2">
 
-          {post.text && (
-            <p className="mb-3 text-gray-800">{post.text}</p>
-          )}
-
-          {post.postType === "image" && post.media?.url && (
-            <img
-              src={post.media.url}
-              className="rounded-lg w-full max-h-[400px] object-cover"
-              alt="post"
-            />
-          )}
-
-          {post.postType === "video" && post.media?.url && (
-            <video controls className="rounded-lg w-full max-h-[400px]">
-              <source src={post.media.url} />
-            </video>
-          )}
-
-          <div className="flex gap-4 mt-3 items-center">
-
-            <button
-              onClick={() => handleLike(post._id)}
-              className="flex items-center gap-1 text-sm hover:text-red-600 active:scale-125 transition"
-            >
-              <Heart
-                className={`w-5 h-5 ${
-                  post.likes.length ? "fill-red-500 text-red-500" : ""
-                }`}
-              />
-              <span>{post.likes.length}</span>
-            </button>
-
-            <button
-              onClick={() => toggleComments(post._id)}
-              className="flex items-center gap-1 text-sm hover:text-blue-600 transition"
-            >
-              <MessageCircle className="w-5 h-5" />
-              <span>{post.commentsCount}</span>
-            </button>
-
-          </div>
-
-          {openComments[post._id] && (
-            <div className="mt-3 border-t pt-3 space-y-3">
-
-              <div className="flex gap-2">
-                <input
-                  value={commentText[post._id] || ""}
-                  onChange={e =>
-                    setCommentText(prev => ({
-                      ...prev,
-                      [post._id]: e.target.value,
-                    }))
-                  }
-                  placeholder="Write a comment..."
-                  className="flex-1 border rounded px-3 py-1 text-sm"
+              <div
+                onClick={() => navigate(`/profile/${post.author._id}`)}
+                className="flex items-center gap-3 cursor-pointer hover:opacity-80"
+              >
+                <img
+                  src={post.authorProfile?.avatarUrl || "/avatar-placeholder.png"}
+                  className="w-10 h-10 rounded-full object-cover"
+                  alt="avatar"
                 />
-                <button
-                  onClick={() => handleAddComment(post._id)}
-                  className="text-blue-600 text-sm"
-                >
-                  Post
-                </button>
+                <p className="font-medium">
+                  {post.author.firstName} {post.author.lastName}
+                </p>
               </div>
 
-              {loadingComments[post._id] && (
-                <p className="text-sm text-gray-400">Loading comments...</p>
-              )}
+              {isOwner && (
+                <div className="relative">
 
-              {comments[post._id]?.map(c => (
-                <div key={c._id} className="flex gap-2 items-start">
+                  <button
+                    onClick={() =>
+                      setMenuOpen(menuOpen === post._id ? null : post._id)
+                    }
+                  >
+                    <MoreVertical size={18} />
+                  </button>
 
-                  <img
-                    src={c.authorProfile?.avatarUrl || "/avatar-placeholder.png"}
-                    className="w-7 h-7 rounded-full object-cover"
-                  />
+                  {menuOpen === post._id && (
+                    <div className="absolute right-0 bg-white shadow rounded text-sm z-50">
 
-                  <div className="bg-gray-100 rounded-lg px-3 py-1 text-sm">
-                    <p className="font-bold">
-                      {c.author.firstName} {c.author.lastName}
-                    </p>
-                    <p>{c.text}</p>
-                  </div>
+                      <button
+                        onClick={() => startEdit(post)}
+                        className="block px-4 py-2 hover:bg-gray-100 w-full text-left"
+                      >
+                        Edit
+                      </button>
 
+                      <button
+                        onClick={() => handleDelete(post._id)}
+                        className="block px-4 py-2 text-red-600 hover:bg-gray-100 w-full text-left"
+                      >
+                        Delete
+                      </button>
+
+                    </div>
+                  )}
                 </div>
-              ))}
+              )}
+            </div>
+
+            {/* TEXT */}
+            {editingPost === post._id ? (
+              <div className="flex gap-2 mb-3">
+                <input
+                  value={editText}
+                  onChange={e => setEditText(e.target.value)}
+                  className="flex-1 border rounded px-3 py-1 text-sm"
+                />
+                <button onClick={() => saveEdit(post._id)}>
+                  <Check size={18} />
+                </button>
+                <button onClick={() => setEditingPost(null)}>
+                  <X size={18} />
+                </button>
+              </div>
+            ) : (
+              post.text && <p className="mb-3 text-gray-800">{post.text}</p>
+            )}
+
+            {/* MEDIA */}
+            {post.postType === "image" && post.media?.url && (
+              <img
+                src={post.media.url}
+                className="rounded-lg w-full max-h-[400px] object-cover"
+                alt="post"
+              />
+            )}
+
+            {post.postType === "video" && post.media?.url && (
+              <video controls className="rounded-lg w-full max-h-[400px]">
+                <source src={post.media.url} />
+              </video>
+            )}
+
+            {/* ACTIONS */}
+            <div className="flex gap-4 mt-3">
+
+              <button
+                onClick={() => handleLike(post._id)}
+                className="flex items-center gap-1 text-sm hover:text-red-600 active:scale-125 transition"
+              >
+                <Heart
+                  className={`w-5 h-5 ${
+                    post.likes.length ? "fill-red-500 text-red-500" : ""
+                  }`}
+                />
+                {post.likes.length}
+              </button>
+
+              <button
+                onClick={() => toggleComments(post._id)}
+                className="flex items-center gap-1 text-sm hover:text-blue-600"
+              >
+                <MessageCircle className="w-5 h-5" />
+                {post.commentsCount}
+              </button>
 
             </div>
-          )}
 
-        </div>
-      ))}
+            {/* COMMENTS */}
+            {openComments[post._id] && (
+              <div className="mt-3 border-t pt-3 space-y-3">
 
+                <div className="flex gap-2">
+                  <input
+                    value={commentText[post._id] || ""}
+                    onChange={e =>
+                      setCommentText(p => ({
+                        ...p,
+                        [post._id]: e.target.value,
+                      }))
+                    }
+                    placeholder="Write a comment..."
+                    className="flex-1 border rounded px-3 py-1 text-sm"
+                  />
+                  <button
+                    onClick={() => handleAddComment(post._id)}
+                    className="text-blue-600 text-sm"
+                  >
+                    Post
+                  </button>
+                </div>
+
+                {loadingComments[post._id] && (
+                  <p className="text-sm text-gray-400">Loading comments...</p>
+                )}
+
+                {comments[post._id]?.map(c => (
+                  <div key={c._id} className="flex gap-2">
+
+                    <img
+                      src={c.authorProfile?.avatarUrl || "/avatar-placeholder.png"}
+                      className="w-7 h-7 rounded-full object-cover"
+                    />
+
+                    <div className="bg-gray-100 rounded-lg px-3 py-1 text-sm">
+                      <p className="font-bold">
+                        {c.author.firstName} {c.author.lastName}
+                      </p>
+                      <p>{c.text}</p>
+                    </div>
+
+                  </div>
+                ))}
+              </div>
+            )}
+
+          </div>
+        );
+      })}
     </div>
   );
 };
