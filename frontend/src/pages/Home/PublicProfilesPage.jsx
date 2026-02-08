@@ -15,8 +15,6 @@ const PublicProfilesPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  /* ---------- LOAD PROFILES + FOLLOW STATE ---------- */
-
   useEffect(() => {
     const loadProfiles = async () => {
       try {
@@ -25,7 +23,6 @@ const PublicProfilesPage = () => {
 
         setProfiles(list);
 
-        // load follow state for each profile
         const map = {};
 
         await Promise.all(
@@ -46,10 +43,9 @@ const PublicProfilesPage = () => {
     loadProfiles();
   }, []);
 
-  /* ---------- FOLLOW / UNFOLLOW ---------- */
 
   const handleFollow = async (e, userId) => {
-    e.stopPropagation(); // prevent navigation click
+    e.stopPropagation();
 
     try {
       const res = await toggleFollow(userId);
@@ -64,7 +60,6 @@ const PublicProfilesPage = () => {
     }
   };
 
-  /* ---------- UI STATES ---------- */
 
   if (loading) return <Loading />;
 
@@ -80,7 +75,6 @@ const PublicProfilesPage = () => {
     );
   }
 
-  /* ---------- UI ---------- */
 
   return (
     <div className="max-w-4xl mx-auto p-6">
