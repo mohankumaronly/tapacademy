@@ -1,16 +1,28 @@
 import { useEffect, useState } from "react";
+import { useParams } from "react-router-dom";
+
 import { useAuth } from "../../context/AuthContext";
 import useInputText from "../../Hooks/InputHooks";
 import InputText from "../../common/InputText";
 import ProfileLayout from "../../layouts/ProfileLayout";
+
 import {
   getMyProfile,
   updateProfile,
   uploadAvatar,
 } from "../../services/profile.service";
 
+import {
+  toggleFollow,
+  getFollowStats,
+} from "../../services/follow.service";
+
 const ProfilePage = () => {
   const { user, loading } = useAuth();
+  const { userId } = useParams();
+
+  const profileUserId = userId || user?.id;
+  const isMyProfile = profileUserId === user?.id;
 
   const { formData, onChange, reset, setFormData } = useInputText({
     headline: "",
@@ -24,75 +36,121 @@ const ProfilePage = () => {
     batchName: "",
     location: "",
     isProfilePublic: true,
-    avatarUrl: "", 
+    avatarUrl: "",
   });
 
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [message, setMessage] = useState("");
+
+  const [followStats, setFollowStats] = useState({
+    followers: 0,
+    following: 0,
+    isFollowing: false,
+  });
+
+  /* ================= LOAD PROFILE ================= */
 
   useEffect(() => {
-    if (!user) return;
+    if (!profileUserId) return;
 
-    getMyProfile()
-      .then((res) => {
-        const profile = res.data.data;
+    const loadProfile = async () => {
+      try {
+        const res = await getMyProfile(profileUserId);
+        const p = res.data.data;
 
         setFormData({
-          headline: profile.headline || "",
-          bio: profile.bio || "",
-          skills: profile.skills?.join(", ") || "",
-          github: profile.github || "",
-          linkedin: profile.linkedin || "",
-          portfolio: profile.portfolio || "",
-          education: profile.education || "",
-          college: profile.college || "",
-          batchName: profile.batchName || "",
-          location: profile.location || "",
-          isProfilePublic: profile.isProfilePublic ?? true,
-          avatarUrl: profile.avatarUrl || "", 
+          headline: p.headline || "",
+          bio: p.bio || "",
+          skills: p.skills?.join(", ") || "",
+          github: p.github || "",
+          linkedin: p.linkedin || "",
+          portfolio: p.portfolio || "",
+          education: p.education || "",
+          college: p.college || "",
+          batchName: p.batchName || "",
+          location: p.location || "",
+          isProfilePublic: p.isProfilePublic ?? true,
+          avatarUrl: p.avatarUrl || "",
         });
-      })
-      .catch((err) => {
+      } catch (err) {
         if (err.response?.status !== 404) console.error(err);
-      });
-  }, [user]);
+      }
+    };
 
- const handleAvatarUpload = async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  
-  if (!file.type.startsWith("image/")) {
-    alert("Please select an image file");
-    return;
-  }
+    loadProfile();
+  }, [profileUserId, setFormData]);
 
-  if (file.size > 10 * 1024 * 1024) {
-    alert("Image must be under 10MB");
-    return;
-  }
+  /* ================= LOAD FOLLOW STATS ================= */
 
-  try {
-    setUploadingAvatar(true);
+  useEffect(() => {
+    if (!profileUserId) return;
 
-    const res = await uploadAvatar(file);
+    const loadStats = async () => {
+      try {
+        const res = await getFollowStats(profileUserId);
+        const data = res.data;
 
-    if (res.data?.success) {
-      setFormData((prev) => ({
+        setFollowStats({
+          followers: data.followers || 0,
+          following: data.following || 0,
+          isFollowing: data.isFollowing || false,
+        });
+      } catch (err) {
+        console.error("Stats load failed", err);
+      }
+    };
+
+    loadStats();
+  }, [profileUserId]);
+
+  /* ================= FOLLOW / UNFOLLOW ================= */
+
+  const handleFollow = async () => {
+    try {
+      const res = await toggleFollow(profileUserId);
+      const followed = res.data.followed;
+
+      setFollowStats(prev => ({
+        ...prev,
+        isFollowing: followed,
+        followers: followed
+          ? prev.followers + 1
+          : Math.max(prev.followers - 1, 0),
+      }));
+    } catch (err) {
+      console.error("Follow failed", err);
+    }
+  };
+
+  /* ================= AVATAR ================= */
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file || !file.type.startsWith("image/")) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      alert("Image must be under 10MB");
+      return;
+    }
+
+    try {
+      setUploadingAvatar(true);
+      const res = await uploadAvatar(file);
+
+      setFormData(prev => ({
         ...prev,
         avatarUrl: res.data.data.avatarUrl,
       }));
-    } else {
-      throw new Error("Upload failed");
+    } catch (err) {
+      console.error(err);
+      alert("Avatar upload failed");
+    } finally {
+      setUploadingAvatar(false);
     }
-  } catch (err) {
-    console.error(err);
-    alert("Avatar upload failed");
-  } finally {
-    setUploadingAvatar(false);
-  }
-};
+  };
 
+  /* ================= SAVE PROFILE ================= */
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -104,17 +162,19 @@ const ProfilePage = () => {
         ...formData,
         skills: formData.skills
           .split(",")
-          .map((s) => s.trim())
+          .map(s => s.trim())
           .filter(Boolean),
       });
 
       setMessage("Profile updated successfully");
-    } catch (err) {
+    } catch {
       setMessage("Failed to update profile");
     } finally {
       setSaving(false);
     }
   };
+
+  /* ================= VISIBILITY ================= */
 
   const toggleVisibility = () => {
     onChange({
@@ -125,7 +185,7 @@ const ProfilePage = () => {
     });
   };
 
-  if (loading) {
+  if (loading || !user) {
     return (
       <ProfileLayout>
         <div className="text-gray-500">Loading profile...</div>
@@ -133,96 +193,114 @@ const ProfilePage = () => {
     );
   }
 
-  if (!user) {
-    return (
-      <ProfileLayout>
-        <div className="text-red-500">Please login to view profile</div>
-      </ProfileLayout>
-    );
-  }
-
   return (
     <ProfileLayout>
       <div className="w-full max-w-2xl bg-white shadow rounded-lg p-6">
+
         <h1 className="text-2xl font-semibold mb-6 text-center">
           User Profile
         </h1>
 
+        {/* AVATAR */}
         <div className="flex flex-col items-center mb-6">
           <img
             src={formData.avatarUrl || "/avatar-placeholder.png"}
-            alt="avatar"
             className="w-24 h-24 rounded-full object-cover mb-3 border"
+            alt="avatar"
           />
 
-          <label className="text-sm text-blue-600 cursor-pointer">
-            {uploadingAvatar ? "Uploading..." : "Change Avatar"}
-            <input
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={handleAvatarUpload}
-            />
-          </label>
+          {isMyProfile && (
+            <label className="text-sm text-blue-600 cursor-pointer">
+              {uploadingAvatar ? "Uploading..." : "Change Avatar"}
+              <input hidden type="file" accept="image/*" onChange={handleAvatarUpload} />
+            </label>
+          )}
         </div>
 
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <InputText label="First Name" value={user.firstName} readOnly />
-          <InputText label="Last Name" value={user.lastName} readOnly />
-          <InputText label="Email" value={user.email} readOnly />
-        </div>
-
-        <div className="flex items-center justify-between mb-6 p-3 border rounded">
+        {/* STATS */}
+        <div className="flex justify-center gap-10 mb-6 text-center">
           <div>
-            <p className="font-medium">Profile Visibility</p>
-            <p className="text-sm text-gray-500">
-              {formData.isProfilePublic ? "Public" : "Private"}
-            </p>
+            <p className="text-xl font-semibold">{followStats.followers}</p>
+            <p className="text-sm text-gray-500">Followers</p>
           </div>
-
-          <button
-            type="button"
-            onClick={toggleVisibility}
-            className={`px-4 py-2 rounded text-white ${
-              formData.isProfilePublic ? "bg-green-600" : "bg-gray-600"
-            }`}
-          >
-            {formData.isProfilePublic ? "Public" : "Private"}
-          </button>
+          <div>
+            <p className="text-xl font-semibold">{followStats.following}</p>
+            <p className="text-sm text-gray-500">Following</p>
+          </div>
         </div>
 
-        {message && (
-          <div className="mb-4 text-sm text-center text-green-600">
-            {message}
+        {/* FOLLOW BUTTON */}
+        {!isMyProfile && (
+          <div className="flex justify-center mb-6">
+            <button
+              onClick={handleFollow}
+              className={`px-6 py-2 rounded text-white transition ${
+                followStats.isFollowing
+                  ? "bg-red-500 hover:bg-red-600"
+                  : "bg-blue-600 hover:bg-blue-700"
+              }`}
+            >
+              {followStats.isFollowing ? "Unfollow" : "Follow"}
+            </button>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <InputText name="headline" label="Headline" value={formData.headline} onChange={onChange} />
-          <InputText name="bio" label="Bio" value={formData.bio} onChange={onChange} />
-          <InputText name="skills" label="Skills" value={formData.skills} onChange={onChange} />
-          <InputText name="github" label="GitHub" value={formData.github} onChange={onChange} />
-          <InputText name="linkedin" label="LinkedIn" value={formData.linkedin} onChange={onChange} />
-          <InputText name="portfolio" label="Portfolio" value={formData.portfolio} onChange={onChange} />
-          <InputText name="education" label="Education" value={formData.education} onChange={onChange} />
-          <InputText name="college" label="College" value={formData.college} onChange={onChange} />
-          <InputText name="batchName" label="Batch Name" value={formData.batchName} onChange={onChange} />
-          <InputText name="location" label="Location" value={formData.location} onChange={onChange} />
+        {/* EDIT AREA */}
+        {isMyProfile && (
+          <>
+            <div className="flex items-center justify-between mb-6 p-3 border rounded">
+              <div>
+                <p className="font-medium">Profile Visibility</p>
+                <p className="text-sm text-gray-500">
+                  {formData.isProfilePublic ? "Public" : "Private"}
+                </p>
+              </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <button type="button" onClick={reset} className="px-4 py-2 border rounded">
-              Reset
-            </button>
+              <button
+                onClick={toggleVisibility}
+                className={`px-4 py-2 rounded text-white ${
+                  formData.isProfilePublic ? "bg-green-600" : "bg-gray-600"
+                }`}
+              >
+                {formData.isProfilePublic ? "Public" : "Private"}
+              </button>
+            </div>
 
-            <button
-              type="submit"
-              disabled={saving}
-              className="px-4 py-2 bg-black text-white rounded"
-            >
-              {saving ? "Saving..." : "Save Profile"}
-            </button>
-          </div>
-        </form>
+            {message && (
+              <p className="text-sm text-center text-green-600 mb-4">
+                {message}
+              </p>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <InputText name="headline" label="Headline" value={formData.headline} onChange={onChange} />
+              <InputText name="bio" label="Bio" value={formData.bio} onChange={onChange} />
+              <InputText name="skills" label="Skills" value={formData.skills} onChange={onChange} />
+              <InputText name="github" label="GitHub" value={formData.github} onChange={onChange} />
+              <InputText name="linkedin" label="LinkedIn" value={formData.linkedin} onChange={onChange} />
+              <InputText name="portfolio" label="Portfolio" value={formData.portfolio} onChange={onChange} />
+              <InputText name="education" label="Education" value={formData.education} onChange={onChange} />
+              <InputText name="college" label="College" value={formData.college} onChange={onChange} />
+              <InputText name="batchName" label="Batch Name" value={formData.batchName} onChange={onChange} />
+              <InputText name="location" label="Location" value={formData.location} onChange={onChange} />
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button type="button" onClick={reset} className="border px-4 py-2 rounded">
+                  Reset
+                </button>
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="bg-black text-white px-4 py-2 rounded"
+                >
+                  {saving ? "Saving..." : "Save Profile"}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+
       </div>
     </ProfileLayout>
   );

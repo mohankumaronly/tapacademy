@@ -7,6 +7,8 @@ const { getMyProfile } = require('../controllers/getMyProfile.controller');
 const { uploadAvatar } = require('../controllers/uploadAvatar.controller');
 const upload = require('../middlewares/upload.middleware');
 const { getPublicProfiles } = require('../controllers/getPublicProfiles.controller');
+const { toggleFollow } = require('../controllers/toggleFollow.controller');
+const { getFollowStats } = require('../controllers/getFollowStats.controller');
 
 const profileRouters = express.Router();
 
@@ -21,5 +23,7 @@ profileRouters.post(
   upload.single("avatar"),
   uploadAvatar
 );
+profileRouters.post("/follow/:userId", protect, toggleFollow);
+profileRouters.get("/follow-stats/:userId", protect, getFollowStats);
 
 module.exports = profileRouters;
