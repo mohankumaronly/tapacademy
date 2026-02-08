@@ -49,7 +49,7 @@ const ProfilePage = () => {
     isFollowing: false,
   });
 
-  /* ================= LOAD PROFILE ================= */
+  /* ---------- LOAD PROFILE ---------- */
 
   useEffect(() => {
     if (!profileUserId) return;
@@ -74,14 +74,14 @@ const ProfilePage = () => {
           avatarUrl: p.avatarUrl || "",
         });
       } catch (err) {
-        if (err.response?.status !== 404) console.error(err);
+        console.error(err);
       }
     };
 
     loadProfile();
   }, [profileUserId, setFormData]);
 
-  /* ================= LOAD FOLLOW STATS ================= */
+  /* ---------- LOAD FOLLOW STATS ---------- */
 
   useEffect(() => {
     if (!profileUserId) return;
@@ -89,12 +89,12 @@ const ProfilePage = () => {
     const loadStats = async () => {
       try {
         const res = await getFollowStats(profileUserId);
-        const data = res.data;
+        const data = res.data.data;   // ✅ FIX HERE
 
         setFollowStats({
-          followers: data.followers || 0,
-          following: data.following || 0,
-          isFollowing: data.isFollowing || false,
+          followers: data.followers,
+          following: data.following,
+          isFollowing: data.isFollowing,
         });
       } catch (err) {
         console.error("Stats load failed", err);
@@ -104,7 +104,7 @@ const ProfilePage = () => {
     loadStats();
   }, [profileUserId]);
 
-  /* ================= FOLLOW / UNFOLLOW ================= */
+  /* ---------- FOLLOW / UNFOLLOW ---------- */
 
   const handleFollow = async () => {
     try {
@@ -123,7 +123,7 @@ const ProfilePage = () => {
     }
   };
 
-  /* ================= AVATAR ================= */
+  /* ---------- AVATAR ---------- */
 
   const handleAvatarUpload = async (e) => {
     const file = e.target.files[0];
@@ -142,15 +142,12 @@ const ProfilePage = () => {
         ...prev,
         avatarUrl: res.data.data.avatarUrl,
       }));
-    } catch (err) {
-      console.error(err);
-      alert("Avatar upload failed");
     } finally {
       setUploadingAvatar(false);
     }
   };
 
-  /* ================= SAVE PROFILE ================= */
+  /* ---------- SAVE PROFILE ---------- */
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -174,7 +171,7 @@ const ProfilePage = () => {
     }
   };
 
-  /* ================= VISIBILITY ================= */
+  /* ---------- VISIBILITY ---------- */
 
   const toggleVisibility = () => {
     onChange({
@@ -197,16 +194,13 @@ const ProfilePage = () => {
     <ProfileLayout>
       <div className="w-full max-w-2xl bg-white shadow rounded-lg p-6">
 
-        <h1 className="text-2xl font-semibold mb-6 text-center">
-          User Profile
-        </h1>
+        <h1 className="text-2xl font-semibold mb-6 text-center">User Profile</h1>
 
         {/* AVATAR */}
         <div className="flex flex-col items-center mb-6">
           <img
             src={formData.avatarUrl || "/avatar-placeholder.png"}
             className="w-24 h-24 rounded-full object-cover mb-3 border"
-            alt="avatar"
           />
 
           {isMyProfile && (
@@ -234,7 +228,7 @@ const ProfilePage = () => {
           <div className="flex justify-center mb-6">
             <button
               onClick={handleFollow}
-              className={`px-6 py-2 rounded text-white transition ${
+              className={`px-6 py-2 rounded text-white ${
                 followStats.isFollowing
                   ? "bg-red-500 hover:bg-red-600"
                   : "bg-blue-600 hover:bg-blue-700"
@@ -245,17 +239,16 @@ const ProfilePage = () => {
           </div>
         )}
 
-        {/* EDIT AREA */}
+        {/* EDIT FORM */}
         {isMyProfile && (
           <>
-            <div className="flex items-center justify-between mb-6 p-3 border rounded">
+            <div className="flex justify-between mb-6 p-3 border rounded">
               <div>
                 <p className="font-medium">Profile Visibility</p>
                 <p className="text-sm text-gray-500">
                   {formData.isProfilePublic ? "Public" : "Private"}
                 </p>
               </div>
-
               <button
                 onClick={toggleVisibility}
                 className={`px-4 py-2 rounded text-white ${
@@ -266,11 +259,7 @@ const ProfilePage = () => {
               </button>
             </div>
 
-            {message && (
-              <p className="text-sm text-center text-green-600 mb-4">
-                {message}
-              </p>
-            )}
+            {message && <p className="text-center text-green-600 mb-4">{message}</p>}
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <InputText name="headline" label="Headline" value={formData.headline} onChange={onChange} />
@@ -285,22 +274,14 @@ const ProfilePage = () => {
               <InputText name="location" label="Location" value={formData.location} onChange={onChange} />
 
               <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={reset} className="border px-4 py-2 rounded">
-                  Reset
-                </button>
-
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className="bg-black text-white px-4 py-2 rounded"
-                >
+                <button type="button" onClick={reset} className="border px-4 py-2 rounded">Reset</button>
+                <button type="submit" disabled={saving} className="bg-black text-white px-4 py-2 rounded">
                   {saving ? "Saving..." : "Save Profile"}
                 </button>
               </div>
             </form>
           </>
         )}
-
       </div>
     </ProfileLayout>
   );
