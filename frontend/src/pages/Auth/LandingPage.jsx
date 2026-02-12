@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, 
   Camera, 
@@ -19,10 +19,12 @@ import {
   Share2,
   Globe,
   Heart,
-  Play
+  Play,
+  ChevronLeft,
+  ChevronRight,
+  Quote
 } from 'lucide-react';
 import LandingPageLayout from '../../layouts/LandingPageLayout';
-
 
 // ============ ANIMATION VARIANTS ============
 const fadeInUp = {
@@ -62,6 +64,49 @@ const CREATOR = {
   role: 'Full Stack Developer',
   initials: 'MK'
 };
+
+// ============ LEADERSHIP DATA ============
+const LEADERS = [
+  {
+    id: 1,
+    name: "Rohit Ravinder",
+    role: "CEO & Founder",
+    image: "https://d2hqh62t23qj3u.cloudfront.net/assets/ceo.jpg", // Replace with actual image
+    description: "Founder of TAP Academy, teacher to 100,000+ students, and a curious builder who uses AI, agentic workflows, animations and visualizations to make learning (and business) 10× faster.",
+    gradient: "from-blue-600 to-indigo-600",
+    bgColor: "bg-blue-50",
+    social: {
+      linkedin: "#",
+      twitter: "#"
+    }
+  },
+  {
+    id: 2,
+    name: "Somanna M G",
+    role: "Co-Founder & Director",
+    image: "https://d2hqh62t23qj3u.cloudfront.net/assets/cto.jpg", // Replace with actual image
+    description: "Leads core business functions with a focus on innovation, growth, and long-term vision. Committed to building impactful EdTech solutions that shape the future of learning.",
+    gradient: "from-purple-600 to-pink-600",
+    bgColor: "bg-purple-50",
+    social: {
+      linkedin: "#",
+      twitter: "#"
+    }
+  },
+  {
+    id: 3,
+    name: "Shilpa Subbaiah",
+    role: "COO & Director",
+    image: "https://d2hqh62t23qj3u.cloudfront.net/assets/coo.jpg", // Replace with actual image
+    description: "I bridge vision with execution—ensuring that every aspect of the business aligns with our mission to transform education through technology.",
+    gradient: "from-emerald-600 to-teal-600",
+    bgColor: "bg-emerald-50",
+    social: {
+      linkedin: "#",
+      twitter: "#"
+    }
+  }
+];
 
 // ============ COMPONENTS ============
 const BackgroundElements = () => (
@@ -103,20 +148,16 @@ const BrandBar = () => (
         whileTap={{ scale: 0.95 }}
         className="group flex items-center gap-3 bg-gradient-to-r from-slate-900 to-slate-800 text-white px-4 py-2 rounded-full shadow-lg hover:shadow-xl transition-all"
       >
-        {/* GitHub Icon */}
         <Github size={16} className="text-white" />
-        
         <div className="flex flex-col items-start">
           <span className="text-xs font-bold flex items-center gap-1">
-            Get Full Stack Project
+            Get This Full Stack Project For Free
             <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
           </span>
           <span className="text-[8px] opacity-80">
-            Open Source • Free • Tap Academy
+            Open Source • Free
           </span>
         </div>
-
-        {/* Live Indicator */}
         <motion.div 
           animate={{ scale: [1, 1.2, 1] }}
           transition={{ duration: 2, repeat: Infinity }}
@@ -127,6 +168,244 @@ const BrandBar = () => (
   </LandingPageLayout>
 );
 
+// ============ LEADERSHIP CAROUSEL COMPONENT ============
+const LeadershipCarousel = () => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [direction, setDirection] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      nextSlide();
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [currentIndex]);
+
+  const nextSlide = useCallback(() => {
+    setDirection(1);
+    setCurrentIndex((prevIndex) => (prevIndex + 1) % LEADERS.length);
+  }, []);
+
+  const prevSlide = useCallback(() => {
+    setDirection(-1);
+    setCurrentIndex((prevIndex) => (prevIndex - 1 + LEADERS.length) % LEADERS.length);
+  }, []);
+
+  const goToSlide = (index) => {
+    setDirection(index > currentIndex ? 1 : -1);
+    setCurrentIndex(index);
+  };
+
+  const slideVariants = {
+    enter: (direction) => ({
+      x: direction > 0 ? 300 : -300,
+      opacity: 0,
+      scale: 0.95
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      scale: 1,
+      transition: {
+        duration: 0.5,
+        type: "spring",
+        stiffness: 300,
+        damping: 30
+      }
+    },
+    exit: (direction) => ({
+      x: direction < 0 ? 300 : -300,
+      opacity: 0,
+      scale: 0.95,
+      transition: {
+        duration: 0.5
+      }
+    })
+  };
+
+  return (
+    <Section bgWhite className="py-20 sm:py-24 lg:py-32 overflow-hidden">
+      {/* Section Header */}
+      <div className="text-center mb-16">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="inline-flex items-center gap-2 bg-[#0a66c2]/10 px-4 py-2 rounded-full mb-6"
+        >
+          <span className="text-xs font-bold text-[#0a66c2] uppercase tracking-wider">
+            Leadership Team
+          </span>
+        </motion.div>
+        
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="text-4xl sm:text-5xl font-black mb-4 text-slate-900"
+        >
+          Meet the {' '}
+          <span className="bg-gradient-to-r from-[#0a66c2] to-blue-500 bg-clip-text text-transparent">
+            Visionaries
+          </span>
+        </motion.h2>
+        
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="text-lg text-slate-600 max-w-2xl mx-auto"
+        >
+          The passionate minds behind Tap Academy, dedicated to transforming education through technology
+        </motion.p>
+      </div>
+
+      {/* Carousel Container */}
+      <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="relative h-[500px] sm:h-[450px] md:h-[400px] lg:h-[380px]">
+          <AnimatePresence initial={false} custom={direction} mode="wait">
+            <motion.div
+              key={currentIndex}
+              custom={direction}
+              variants={slideVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              className="absolute w-full"
+            >
+              <LeadershipCard leader={LEADERS[currentIndex]} />
+            </motion.div>
+          </AnimatePresence>
+        </div>
+
+        {/* Navigation Buttons - Desktop Floating Style */}
+        <div className="hidden md:block">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={prevSlide}
+            className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 lg:-translate-x-6 p-3 rounded-full bg-white border border-slate-200 shadow-xl hover:shadow-2xl transition-all group z-20"
+          >
+            <ChevronLeft size={24} className="text-slate-600 group-hover:text-[#0a66c2] transition-colors" />
+          </motion.button>
+          
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={nextSlide}
+            className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 lg:translate-x-6 p-3 rounded-full bg-white border border-slate-200 shadow-xl hover:shadow-2xl transition-all group z-20"
+          >
+            <ChevronRight size={24} className="text-slate-600 group-hover:text-[#0a66c2] transition-colors" />
+          </motion.button>
+        </div>
+
+        {/* Dots Indicator - Centered Below */}
+        <div className="flex justify-center items-center gap-2 mt-8">
+          {LEADERS.map((_, index) => (
+            <motion.button
+              key={index}
+              onClick={() => goToSlide(index)}
+              whileHover={{ scale: 1.2 }}
+              whileTap={{ scale: 0.9 }}
+              className="relative"
+            >
+              <div
+                className={`rounded-full transition-all duration-300 ${
+                  index === currentIndex
+                    ? 'w-8 h-2 bg-[#0a66c2]'
+                    : 'w-2 h-2 bg-slate-300 hover:bg-slate-400'
+                }`}
+              />
+            </motion.button>
+          ))}
+        </div>
+
+        {/* Mobile Navigation Buttons - Bottom */}
+        <div className="flex justify-center items-center gap-4 mt-6 md:hidden">
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={prevSlide}
+            className="p-3 rounded-full bg-white border border-slate-200 shadow-lg hover:shadow-xl transition-all group"
+          >
+            <ChevronLeft size={20} className="text-slate-600 group-hover:text-[#0a66c2] transition-colors" />
+          </motion.button>
+          
+          <span className="text-sm font-medium text-slate-500">
+            {currentIndex + 1} / {LEADERS.length}
+          </span>
+          
+          <motion.button
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            onClick={nextSlide}
+            className="p-3 rounded-full bg-white border border-slate-200 shadow-lg hover:shadow-xl transition-all group"
+          >
+            <ChevronRight size={20} className="text-slate-600 group-hover:text-[#0a66c2] transition-colors" />
+          </motion.button>
+        </div>
+      </div>
+    </Section>
+  );
+};
+
+// Individual Leadership Card
+const LeadershipCard = ({ leader }) => {
+  return (
+    <div className="bg-white rounded-3xl border border-slate-200 shadow-xl overflow-hidden group hover:shadow-2xl transition-all duration-500">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-0">
+        {/* Image Section */}
+        <div className="relative h-64 lg:h-auto overflow-hidden bg-gradient-to-br from-slate-100 to-slate-200">
+          <img
+            src={leader.image}
+            alt={leader.name}
+            className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700"
+          />
+          <div className={`absolute inset-0 bg-gradient-to-t ${leader.gradient} opacity-0 group-hover:opacity-20 transition-opacity duration-500`} />
+          <div className="absolute top-4 right-4 w-12 h-12 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center shadow-lg">
+            <Quote size={20} className={`bg-gradient-to-r ${leader.gradient} bg-clip-text text-transparent`} />
+          </div>
+        </div>
+
+        {/* Content Section */}
+        <div className={`p-8 lg:p-10 flex flex-col justify-center ${leader.bgColor} lg:bg-white`}>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-2xl lg:text-3xl font-black text-slate-900 mb-2">
+                {leader.name}
+              </h3>
+              <div className="flex items-center gap-2">
+                <div className={`w-1 h-6 bg-gradient-to-b ${leader.gradient} rounded-full`} />
+                <p className={`text-base font-bold bg-gradient-to-r ${leader.gradient} bg-clip-text text-transparent`}>
+                  {leader.role}
+                </p>
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="absolute -left-2 top-0 text-4xl text-slate-300 opacity-20">"</div>
+              <p className="text-sm sm:text-base text-slate-600 leading-relaxed pl-4 italic">
+                {leader.description}
+              </p>
+            </div>
+
+            <div className="flex gap-3 pt-4">
+              <motion.a
+                whileHover={{ y: -2 }}
+                href={leader.social.linkedin}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="p-2 bg-white rounded-lg shadow-sm hover:shadow-md transition-all border border-slate-200"
+              >
+                <Linkedin size={16} className="text-[#0a66c2]" />
+              </motion.a>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const HeroSection = ({ onGetStarted }) => {
   const activityFeed = [
     { user: 'Priya S.', avatar: 'P', activity: 'completed Spring Boot Microservices', time: '2m ago', color: 'from-blue-500 to-[#0a66c2]' },
@@ -136,7 +415,6 @@ const HeroSection = ({ onGetStarted }) => {
 
   return (
     <section className="relative z-10 pt-12 sm:pt-16 lg:pt-20 pb-16 sm:pb-20 lg:pb-24 overflow-hidden">
-      {/* Animated Background Elements */}
       <div className="absolute inset-0 z-0">
         <motion.div 
           animate={{ scale: [1, 1.2, 1], rotate: [0, 45, 0], opacity: [0.3, 0.5, 0.3] }}
@@ -153,7 +431,6 @@ const HeroSection = ({ onGetStarted }) => {
       <LandingPageLayout>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           
-          {/* Left Content */}
           <motion.div
             initial="hidden"
             animate="visible"
@@ -181,7 +458,6 @@ const HeroSection = ({ onGetStarted }) => {
               transform their learning journey into career opportunities. Document your progress, connect with peers, and get noticed by top employers.
             </motion.p>
 
-            {/* CTA Buttons */}
             <motion.div variants={fadeInUp} className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center lg:items-start gap-3 pt-3">
               <motion.button 
                 whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
@@ -205,7 +481,6 @@ const HeroSection = ({ onGetStarted }) => {
               </motion.button>
             </motion.div>
 
-            {/* Social Proof */}
             <motion.div variants={fadeInUp} className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-4">
               <div className="flex -space-x-2">
                 {[1, 2, 3, 4].map((i) => (
@@ -222,7 +497,6 @@ const HeroSection = ({ onGetStarted }) => {
             </motion.div>
           </motion.div>
 
-          {/* Right Content */}
           <motion.div initial={{ opacity: 0, x: 50 }} animate={{ opacity: 1, x: 0 }} transition={{ duration: 0.8, delay: 0.3 }} className="relative hidden lg:block">
             <div className="relative">
               <motion.div animate={{ y: [0, -8, 0] }} transition={{ duration: 6, repeat: Infinity }} className="relative bg-white rounded-2xl border-2 border-slate-200 p-5 shadow-2xl">
@@ -270,7 +544,6 @@ const HeroSection = ({ onGetStarted }) => {
                 </div>
               </motion.div>
 
-              {/* Floating Cards */}
               <motion.div animate={{ rotate: [0, 5, 0], y: [0, -12, 0] }} transition={{ duration: 8, repeat: Infinity }}
                 className="absolute -top-5 -right-5 bg-white rounded-xl border-2 border-slate-200 p-3 shadow-xl w-36">
                 <div className="flex items-center gap-1.5 mb-1.5">
@@ -299,7 +572,6 @@ const HeroSection = ({ onGetStarted }) => {
         </div>
       </LandingPageLayout>
 
-      {/* Scroll Indicator */}
       <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 2, repeat: Infinity }}
         className="absolute bottom-4 left-1/2 transform -translate-x-1/2 hidden lg:block">
         <div className="w-5 h-8 border-2 border-slate-300 rounded-full flex justify-center">
@@ -470,7 +742,6 @@ const CTASection = ({ onGetStarted }) => {
         <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           
-          {/* Left Content */}
           <motion.div variants={fadeInUp} className="text-center lg:text-left space-y-6">
             <div className="inline-flex items-center gap-2 bg-[#0a66c2]/10 px-4 py-2 rounded-full">
               <Sparkles size={16} className="text-[#0a66c2]" />
@@ -490,7 +761,6 @@ const CTASection = ({ onGetStarted }) => {
               Join <span className="font-bold text-[#0a66c2]">2,500+</span> Tap Academy interns who've already transformed their learning into dream jobs at top tech companies.
             </p>
             
-            {/* Stats */}
             <div className="flex flex-wrap justify-center lg:justify-start gap-6 pt-4">
               {stats.map((stat, idx) => (
                 <div key={idx} className="flex items-center gap-2">
@@ -505,7 +775,6 @@ const CTASection = ({ onGetStarted }) => {
               ))}
             </div>
             
-            {/* CTA Button */}
             <div className="flex flex-col sm:flex-row lg:flex-col xl:flex-row items-center lg:items-start gap-4 pt-6">
               <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} onClick={onGetStarted}
                 className="group relative bg-[#0a66c2] text-white py-4 px-8 rounded-2xl text-lg font-bold shadow-xl shadow-blue-200 hover:shadow-2xl transition-all overflow-hidden">
@@ -524,7 +793,6 @@ const CTASection = ({ onGetStarted }) => {
             </div>
           </motion.div>
           
-          {/* Right Content */}
           <motion.div initial={{ opacity: 0, x: 50 }} whileInView={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="relative">
             <div className="absolute inset-0 bg-gradient-to-br from-[#0a66c2]/20 to-blue-400/20 rounded-3xl blur-2xl transform rotate-6" />
             
@@ -593,7 +861,6 @@ const Footer = () => {
       <LandingPageLayout className="py-12 sm:py-16 lg:py-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
           
-          {/* Brand Column */}
           <div className="lg:col-span-5 space-y-6">
             <div className="flex items-center gap-2 sm:gap-3">
               <div className="bg-[#0a66c2] p-2 rounded-xl shadow-md">
@@ -610,7 +877,6 @@ const Footer = () => {
               Connect with peers, showcase your projects, and launch your tech career.
             </p>
             
-            {/* Creator Credit */}
             <div className="pt-4">
               <p className="text-xs text-slate-400 font-medium mb-3">Created by</p>
               <div className="flex items-center gap-4">
@@ -627,7 +893,6 @@ const Footer = () => {
             </div>
           </div>
 
-          {/* Quick Links */}
           <div className="lg:col-span-3">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-5">Quick Links</h4>
             <ul className="space-y-3">
@@ -639,7 +904,6 @@ const Footer = () => {
             </ul>
           </div>
 
-          {/* Connect Column */}
           <div className="lg:col-span-4">
             <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-5">Connect With Creator</h4>
             
@@ -671,7 +935,6 @@ const Footer = () => {
           </div>
         </div>
 
-        {/* Bottom Bar */}
         <div className="mt-12 sm:mt-16 pt-6 sm:pt-8 border-t border-slate-200 flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-[10px] sm:text-xs text-slate-400 order-2 sm:order-1">
             © 2026 Tap Academy Experiences. All rights reserved.
@@ -712,6 +975,7 @@ const LandingPage = () => {
         <HeroSection onGetStarted={handleGetStarted} />
         <ConnectivitySection />
         <JourneySteps />
+        <LeadershipCarousel /> {/* Added Leadership Carousel here */}
         <CTASection onGetStarted={handleGetStarted} />
         <Footer />
       </motion.div>
