@@ -78,23 +78,57 @@ const BackgroundElements = () => (
 
 const BrandBar = () => (
   <Container className="relative z-50 py-4 sm:py-6">
-    <motion.div 
-      initial={{ opacity: 0, x: -20 }}
-      animate={{ opacity: 1, x: 0 }}
-      className="flex items-center gap-2 sm:gap-3"
-    >
-      <div className="bg-[#0a66c2] p-1.5 sm:p-2 rounded-lg sm:rounded-xl shadow-lg shadow-blue-200">
-        <Zap className="text-white w-5 h-5 sm:w-6 sm:h-6 fill-white" />
-      </div>
-      <div className="flex flex-col">
-        <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
-          {BRAND.name}
-        </span>
-        <span className="text-[8px] sm:text-[10px] font-bold tracking-[0.2em] sm:tracking-[0.3em] text-[#0a66c2] uppercase leading-none">
-          {BRAND.tagline}
-        </span>
-      </div>
-    </motion.div>
+    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+      <motion.div 
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        className="flex items-center gap-2 sm:gap-3"
+      >
+        <div className="bg-[#0a66c2] p-1.5 sm:p-2 rounded-lg sm:rounded-xl shadow-lg shadow-blue-200">
+          <Zap className="text-white w-5 h-5 sm:w-6 sm:h-6 fill-white" />
+        </div>
+        <div className="flex flex-col">
+          <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
+            {BRAND.name}
+          </span>
+          <span className="text-[8px] sm:text-[10px] font-bold tracking-[0.2em] sm:tracking-[0.3em] text-[#0a66c2] uppercase leading-none">
+            {BRAND.tagline}
+          </span>
+        </div>
+      </motion.div>
+
+      {/* Open Source Project Badge */}
+      <motion.a
+        href="https://github.com/mohankumaronly/tapacademy"
+        target="_blank"
+        rel="noopener noreferrer"
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        className="group flex items-center gap-3 bg-gradient-to-r from-slate-900 to-slate-800 text-white px-4 py-2 rounded-full shadow-lg hover:shadow-xl transition-all"
+      >
+        {/* GitHub Icon */}
+        <Github size={16} className="text-white" />
+        
+        <div className="flex flex-col items-start">
+          <span className="text-xs font-bold flex items-center gap-1">
+            Get Full Stack Project
+            <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+          </span>
+          <span className="text-[8px] opacity-80">
+            Open Source • Free • Tap Academy
+          </span>
+        </div>
+
+        {/* Live Indicator */}
+        <motion.div 
+          animate={{ scale: [1, 1.2, 1] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="w-2 h-2 bg-green-400 rounded-full"
+        />
+      </motion.a>
+    </div>
   </Container>
 );
 
@@ -638,18 +672,6 @@ const Footer = () => {
                 </div>
                 <ArrowRight size={14} className="text-slate-400 group-hover:text-slate-800 group-hover:translate-x-1 transition-all" />
               </a>
-
-              {/* Social Icons Row */}
-              <div className="flex gap-2 pt-2">
-                <a href={SOCIAL_LINKS.linkedin} target="_blank" rel="noopener noreferrer"
-                  className="p-2.5 bg-[#0a66c2] rounded-lg hover:bg-[#0a66c2]/90 transition-all shadow-sm">
-                  <Linkedin className="w-4 h-4 text-white" />
-                </a>
-                <a href={SOCIAL_LINKS.github} target="_blank" rel="noopener noreferrer"
-                  className="p-2.5 bg-slate-800 rounded-lg hover:bg-slate-700 transition-all shadow-sm">
-                  <Github className="w-4 h-4 text-white" />
-                </a>
-              </div>
             </div>
           </div>
         </div>
