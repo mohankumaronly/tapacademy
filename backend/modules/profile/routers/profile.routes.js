@@ -9,6 +9,8 @@ const upload = require('../middlewares/upload.middleware');
 const { getPublicProfiles } = require('../controllers/getPublicProfiles.controller');
 const { toggleFollow } = require('../controllers/toggleFollow.controller');
 const { getFollowStats } = require('../controllers/getFollowStats.controller');
+const { getFollowers } = require('../controllers/getFollowers.controller');
+const { getFollowing } = require('../controllers/getFollowing.controller');
 
 const profileRouters = express.Router();
 
@@ -25,5 +27,7 @@ profileRouters.post(
 );
 profileRouters.post("/follow/:userId", protect, toggleFollow);
 profileRouters.get("/follow-stats/:userId", protect, getFollowStats);
+profileRouters.get("/followers/:userId", protect, getFollowers);
+profileRouters.get("/following/:userId", protect, getFollowing);
 
 module.exports = profileRouters;

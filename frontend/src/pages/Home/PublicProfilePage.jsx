@@ -179,7 +179,6 @@ const PublicProfilePage = () => {
             </div>
           </ProfileSection>
         </div>
-
         <div className="lg:col-span-8 space-y-8">
           <ProfileSection title="About Me" icon={Briefcase}>
             <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
