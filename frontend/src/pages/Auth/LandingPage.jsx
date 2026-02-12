@@ -21,6 +21,8 @@ import {
   Heart,
   Play
 } from 'lucide-react';
+import LandingPageLayout from '../../layouts/LandingPageLayout';
+
 
 // ============ ANIMATION VARIANTS ============
 const fadeInUp = {
@@ -36,16 +38,9 @@ const staggerContainer = {
   }
 };
 
-// ============ LAYOUT COMPONENT ============
-const Container = ({ children, className = '' }) => (
-  <div className={`max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 ${className}`}>
-    {children}
-  </div>
-);
-
 const Section = ({ children, className = '', bgWhite = false }) => (
   <section className={`relative z-10 ${bgWhite ? 'bg-white' : ''} ${className}`}>
-    <Container>{children}</Container>
+    <LandingPageLayout>{children}</LandingPageLayout>
   </section>
 );
 
@@ -77,7 +72,7 @@ const BackgroundElements = () => (
 );
 
 const BrandBar = () => (
-  <Container className="relative z-50 py-4 sm:py-6">
+  <LandingPageLayout className="relative z-50 py-4 sm:py-6">
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <motion.div 
         initial={{ opacity: 0, x: -20 }}
@@ -129,7 +124,7 @@ const BrandBar = () => (
         />
       </motion.a>
     </div>
-  </Container>
+  </LandingPageLayout>
 );
 
 const HeroSection = ({ onGetStarted }) => {
@@ -155,7 +150,7 @@ const HeroSection = ({ onGetStarted }) => {
         />
       </div>
 
-      <Container>
+      <LandingPageLayout>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-16 items-center">
           
           {/* Left Content */}
@@ -302,7 +297,7 @@ const HeroSection = ({ onGetStarted }) => {
             </div>
           </motion.div>
         </div>
-      </Container>
+      </LandingPageLayout>
 
       {/* Scroll Indicator */}
       <motion.div animate={{ y: [0, 8, 0] }} transition={{ duration: 2, repeat: Infinity }}
@@ -471,7 +466,7 @@ const CTASection = ({ onGetStarted }) => {
         <div className="absolute bottom-0 right-0 w-80 h-80 bg-blue-400 rounded-full blur-3xl" />
       </div>
       
-      <Container>
+      <LandingPageLayout>
         <motion.div initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}
           className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           
@@ -579,7 +574,7 @@ const CTASection = ({ onGetStarted }) => {
             </motion.div>
           </motion.div>
         </motion.div>
-      </Container>
+      </LandingPageLayout>
     </section>
   );
 };
@@ -595,7 +590,7 @@ const Footer = () => {
 
   return (
     <footer className="relative z-10 bg-white border-t border-slate-200">
-      <Container className="py-12 sm:py-16 lg:py-20">
+      <LandingPageLayout className="py-12 sm:py-16 lg:py-20">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
           
           {/* Brand Column */}
@@ -698,7 +693,7 @@ const Footer = () => {
             </a>
           </div>
         </div>
-      </Container>
+      </LandingPageLayout>
     </footer>
   );
 };
