@@ -58,7 +58,7 @@ const googleAuthCallback = async (req, res) => {
         res.clearCookie("oauth_state", {
             httpOnly: true,
             secure: true,
-            sameSite: "lax",
+            sameSite: "none",
         });
 
         const tokenResponse = await axios.post(
