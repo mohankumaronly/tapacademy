@@ -1,30 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Users, 
-  Camera, 
-  ArrowRight, 
-  Linkedin,
-  Github,
-  Zap,
-  Star,
-  Sparkles,
-  Rocket,
-  FileText,
-  Briefcase,
-  Database,
-  Layers,
-  Code2,
-  Share2,
-  Globe,
-  Heart,
-  Play,
-  ChevronLeft,
-  ChevronRight,
-  Quote
-} from 'lucide-react';
+import { Users, Camera, ArrowRight, Linkedin, Github, Zap, Star, Sparkles, Rocket, FileText, Briefcase, Database, Layers, Code2, Share2, Globe, Heart, Play, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import LandingPageLayout from '../../layouts/LandingPageLayout';
+// import BrandBar from './components/BrandBar';
 
 // ============ ANIMATION VARIANTS ============
 const fadeInUp = {
@@ -115,6 +94,8 @@ const BackgroundElements = () => (
     <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full bg-blue-100/30 blur-[120px]" />
   </div>
 );
+
+{/* < BrandBar />  */}
 
 const BrandBar = () => (
   <LandingPageLayout className="relative z-50 py-4 sm:py-6">

@@ -14,7 +14,7 @@ const NotFoundPage = () => {
         <Button
           text="Go Home"
           type="button"
-          onClick={() => navigate("/")}
+          onClick={() => navigate("/home")}
         />
       </div>
     </CommonLayout>
