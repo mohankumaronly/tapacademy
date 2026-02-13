@@ -19,7 +19,7 @@ const googleAuthStart = (req, res) => {
     res.cookie("oauth_state", state, {
         httpOnly: true,
         secure: true,
-        sameSite: "none",
+        sameSite: "lax",
         maxAge: 10 * 60 * 1000,
     });
 
@@ -58,7 +58,7 @@ const googleAuthCallback = async (req, res) => {
         res.clearCookie("oauth_state", {
             httpOnly: true,
             secure: true,
-            sameSite: "none",
+            sameSite: "lax",
         });
 
         const tokenResponse = await axios.post(
