@@ -55,7 +55,7 @@ const AppRouters = () => {
         path="/home"
         element={
           <RequireAuth>
-            <HomePage />
+            <FeedPage />
           </RequireAuth>
         }
       />
@@ -86,14 +86,14 @@ const AppRouters = () => {
           </RequireAuth>
         }
       />
-      <Route
+      {/* <Route
         path="/home/feed"
         element={
           <RequireAuth>
             <FeedPage />
           </RequireAuth>
         }
-      />
+      /> */}
       
       <Route
         path="/profile/:userId"

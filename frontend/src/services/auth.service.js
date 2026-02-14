@@ -48,4 +48,3 @@ export const getAllPayments = (status) => {
   const query = status ? `?status=${status}` : "";
   return api.get(`/payment/admin/payments${query}`);
 };
-

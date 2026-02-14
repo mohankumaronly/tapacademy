@@ -1,7 +1,5 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { MoonLoader } from 'react-spinners';
-import { Zap } from 'lucide-react';
 
 const Loading = () => {
     return (
@@ -9,35 +7,30 @@ const Loading = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex justify-center items-center bg-white/80 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex justify-center items-center bg-gray-50"
         >
-            <div className="flex flex-col items-center space-y-6 p-8 rounded-2xl">
-                {/* Animated Logo */}
-                <motion.div
-                    animate={{ 
-                        scale: [1, 1.1, 1],
-                        rotate: [0, 5, -5, 0]
-                    }}
-                    transition={{ 
-                        duration: 2,
-                        repeat: Infinity,
-                        ease: "easeInOut"
-                    }}
-                    className="bg-gradient-to-r from-[#0a66c2] to-blue-500 p-4 rounded-2xl shadow-xl shadow-blue-200"
-                >
-                    <Zap className="text-white w-8 h-8 fill-white" />
-                </motion.div>
+            <div className="flex flex-col items-center">
+                {/* Progress Bar */}
+                <div className="w-48 h-1 bg-gray-200 rounded-full overflow-hidden">
+                    <motion.div
+                        animate={{ 
+                            x: ["-100%", "100%"]
+                        }}
+                        transition={{ 
+                            duration: 1,
+                            repeat: Infinity,
+                            ease: "linear"
+                        }}
+                        className="w-full h-full bg-gradient-to-r from-blue-400 to-blue-600"
+                    />
+                </div>
                 
-                {/* Loading Spinner */}
-                <MoonLoader size={40} color="#0a66c2" />
-                
-                {/* Loading Text */}
                 <motion.p 
-                    animate={{ opacity: [0.5, 1, 0.5] }}
+                    animate={{ opacity: [0.3, 1, 0.3] }}
                     transition={{ duration: 1.5, repeat: Infinity }}
-                    className="text-sm font-medium text-slate-600"
+                    className="mt-4 text-sm font-light text-gray-400 tracking-wider"
                 >
-                    Loading, please wait...
+                    LOADING
                 </motion.p>
             </div>
         </motion.div>
