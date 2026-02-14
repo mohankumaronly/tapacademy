@@ -60,7 +60,6 @@ const CreatePostPage = () => {
   return (
     <div className="max-w-xl mx-auto p-4 sm:p-6">
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-        {/* HEADER */}
         <div className="px-6 py-4 border-b border-gray-50 flex items-center justify-between">
           <h1 className="text-lg font-bold text-gray-800">Create Post</h1>
           {message.text && (
@@ -73,7 +72,6 @@ const CreatePostPage = () => {
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          {/* TEXT AREA */}
           <textarea
             name="text"
             placeholder="What's on your mind?"
@@ -83,7 +81,6 @@ const CreatePostPage = () => {
             className="w-full text-lg text-gray-800 placeholder-gray-400 border-none focus:ring-0 resize-none outline-none"
           />
 
-          {/* PREVIEW BOX */}
           {preview && (
             <div className="relative group rounded-xl overflow-hidden border border-gray-100 bg-gray-50">
               <button
@@ -103,7 +100,6 @@ const CreatePostPage = () => {
           )}
 
           <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-            {/* ATTACHMENT BUTTONS */}
             <div className="flex gap-2">
               <button
                 type="button"
@@ -131,7 +127,6 @@ const CreatePostPage = () => {
               />
             </div>
 
-            {/* ACTION BUTTONS */}
             <div className="flex items-center gap-3">
               <button
                 type="button"

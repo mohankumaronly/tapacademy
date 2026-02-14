@@ -16,7 +16,8 @@ import {
     ChevronRight,
     MapPin,
     Menu,
-    X
+    X,
+    UserPen 
 } from 'lucide-react';
 import NavItem from './NavItem';
 import { useAuth } from '../../context/AuthContext';
@@ -248,10 +249,10 @@ const Header = () => {
                         onClick={() => navigate('/home/public-profiles')}
                     />
                     <NavItem 
-                        icon={Briefcase} 
-                        label="Jobs" 
-                        active={isActive('/jobs')} 
-                        onClick={() => navigate('/jobs')}
+                        icon={UserPen} 
+                        label="Edit profile" 
+                        active={isActive('/home/profile')} 
+                        onClick={() => navigate('/home/profile')}
                     />
                     <NavItem 
                         icon={MessageCircle} 
@@ -401,11 +402,11 @@ const MobileNavigationMenu = React.forwardRef(({ navigate, isActive, onClose }, 
                 }}
             />
             <MobileNavItem
-                icon={Briefcase}
+                icon={UserPen}
                 label="Jobs"
-                active={isActive('/jobs')}
+                active={isActive('/home/jobs')}
                 onClick={() => {
-                    navigate('/jobs');
+                    navigate('/home/jobs');
                     onClose();
                 }}
             />

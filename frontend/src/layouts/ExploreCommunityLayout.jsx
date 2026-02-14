@@ -5,9 +5,7 @@ const ExploreCommunityLayout = ({ children }) => {
     return (
         <div className="min-h-screen">
             <Header />
-            
-            {/* Main Content Area - Full width with proper padding */}
-            <main className="max-w-7xl mx-auto pt-20 px-4 sm:px-6 lg:px-8">
+                <main className="max-w-7xl mx-auto pt-20 px-4 sm:px-6 lg:px-8">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
@@ -18,7 +16,6 @@ const ExploreCommunityLayout = ({ children }) => {
                 </motion.div>
             </main>
 
-            {/* Simple Footer for Explore Community */}
             <footer className="border-t border-gray-200 mt-12 py-6">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex flex-col md:flex-row justify-between items-center text-sm text-gray-500">

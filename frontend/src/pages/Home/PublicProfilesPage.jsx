@@ -91,7 +91,6 @@ const PublicProfilesPage = () => {
   return (
     <ExploreCommunityLayout>
       <div className="space-y-8">
-        {/* Hero Section */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -113,7 +112,6 @@ const PublicProfilesPage = () => {
           </p>
         </motion.div>
 
-        {/* Search Section */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -147,7 +145,6 @@ const PublicProfilesPage = () => {
               )}
             </div>
 
-            {/* Search Suggestions Dropdown */}
             <AnimatePresence>
               {showDropdown && suggestions.length > 0 && (
                 <motion.div 
@@ -193,7 +190,6 @@ const PublicProfilesPage = () => {
             </AnimatePresence>
           </div>
 
-          {/* Popular Searches */}
           <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
             <span className="text-sm text-gray-400">Popular:</span>
             {["Mohankumar", "Ganesh", "Govind", "Nandkumar", "Amar"].map((term) => (
