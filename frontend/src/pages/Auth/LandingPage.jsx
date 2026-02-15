@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Camera, ArrowRight, Linkedin, Github, Zap, Star, Sparkles, Rocket, FileText, Briefcase, Database, Layers, Code2, Share2, Globe, Heart, Play, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import LandingPageLayout from '../../layouts/LandingPageLayout';
+import TapAcademyLogo from '../../common/TapAcademyLogo';
 // import BrandBar from './components/BrandBar';
 
 // ============ ANIMATION VARIANTS ============
@@ -100,23 +101,7 @@ const BackgroundElements = () => (
 const BrandBar = () => (
   <LandingPageLayout className="relative z-50 py-4 sm:py-6">
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <motion.div 
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="flex items-center gap-2 sm:gap-3"
-      >
-        <div className="bg-[#0a66c2] p-1.5 sm:p-2 rounded-lg sm:rounded-xl shadow-lg shadow-blue-200">
-          <Zap className="text-white w-5 h-5 sm:w-6 sm:h-6 fill-white" />
-        </div>
-        <div className="flex flex-col">
-          <span className="text-xl sm:text-2xl font-black tracking-tight text-slate-900">
-            {BRAND.name}
-          </span>
-          <span className="text-[8px] sm:text-[10px] font-bold tracking-[0.2em] sm:tracking-[0.3em] text-[#0a66c2] uppercase leading-none">
-            {BRAND.tagline}
-          </span>
-        </div>
-      </motion.div>
+      < TapAcademyLogo/>
 
       {/* Open Source Project Badge */}
       <motion.a
