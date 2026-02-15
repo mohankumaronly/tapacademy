@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Camera, ArrowRight, Linkedin, Github, Zap, Star, Sparkles, Rocket, FileText, Briefcase, Database, Layers, Code2, Share2, Globe, Heart, Play, ChevronLeft, ChevronRight, Quote } from 'lucide-react';
 import LandingPageLayout from '../../layouts/LandingPageLayout';
 import TapAcademyLogo from '../../common/TapAcademyLogo';
-// import BrandBar from './components/BrandBar';
 
 // ============ ANIMATION VARIANTS ============
 const fadeInUp = {
@@ -51,7 +50,7 @@ const LEADERS = [
     id: 1,
     name: "Rohit Ravinder",
     role: "CEO & Founder",
-    image: "https://d2hqh62t23qj3u.cloudfront.net/assets/ceo.jpg", // Replace with actual image
+    image: "https://d2hqh62t23qj3u.cloudfront.net/assets/ceo.jpg",
     description: "Founder of TAP Academy, teacher to 100,000+ students, and a curious builder who uses AI, agentic workflows, animations and visualizations to make learning (and business) 10× faster.",
     gradient: "from-blue-600 to-indigo-600",
     bgColor: "bg-blue-50",
@@ -64,7 +63,7 @@ const LEADERS = [
     id: 2,
     name: "Somanna M G",
     role: "Co-Founder & Director",
-    image: "https://d2hqh62t23qj3u.cloudfront.net/assets/cto.jpg", // Replace with actual image
+    image: "https://d2hqh62t23qj3u.cloudfront.net/assets/cto.jpg",
     description: "Leads core business functions with a focus on innovation, growth, and long-term vision. Committed to building impactful EdTech solutions that shape the future of learning.",
     gradient: "from-purple-600 to-pink-600",
     bgColor: "bg-purple-50",
@@ -77,7 +76,7 @@ const LEADERS = [
     id: 3,
     name: "Shilpa Subbaiah",
     role: "COO & Director",
-    image: "https://d2hqh62t23qj3u.cloudfront.net/assets/coo.jpg", // Replace with actual image
+    image: "https://d2hqh62t23qj3u.cloudfront.net/assets/coo.jpg",
     description: "I bridge vision with execution—ensuring that every aspect of the business aligns with our mission to transform education through technology.",
     gradient: "from-emerald-600 to-teal-600",
     bgColor: "bg-emerald-50",
@@ -96,12 +95,11 @@ const BackgroundElements = () => (
   </div>
 );
 
-{/* < BrandBar />  */}
-
 const BrandBar = () => (
   <LandingPageLayout className="relative z-50 py-4 sm:py-6">
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      < TapAcademyLogo/>
+      {/* Using the new Tap Academy Logo component */}
+      <TapAcademyLogo />
 
       {/* Open Source Project Badge */}
       <motion.a
@@ -828,15 +826,8 @@ const Footer = () => {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-16">
           
           <div className="lg:col-span-5 space-y-6">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="bg-[#0a66c2] p-2 rounded-xl shadow-md">
-                <Zap className="text-white w-5 h-5 sm:w-6 sm:h-6 fill-white" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-lg sm:text-xl font-black tracking-tight text-slate-900">{BRAND.name}</span>
-                <span className="text-[8px] sm:text-[9px] font-bold tracking-[0.2em] text-[#0a66c2] uppercase leading-none">{BRAND.tagline}</span>
-              </div>
-            </div>
+            {/* Updated Footer Logo to match the new TapAcademyLogo style */}
+            <TapAcademyLogo />
             
             <p className="text-sm text-slate-500 leading-relaxed max-w-md">
               The exclusive professional network built for Tap Academy students. 
@@ -941,7 +932,7 @@ const LandingPage = () => {
         <HeroSection onGetStarted={handleGetStarted} />
         <ConnectivitySection />
         <JourneySteps />
-        <LeadershipCarousel /> {/* Added Leadership Carousel here */}
+        <LeadershipCarousel />
         <CTASection onGetStarted={handleGetStarted} />
         <Footer />
       </motion.div>
