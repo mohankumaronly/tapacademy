@@ -38,7 +38,7 @@ const FooterLinks = () => {
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ duration: 3, repeat: Infinity }}
             >
-                Tap Academy Community © 2024
+                Tap Academy Community © 2026
             </motion.p>
         </motion.div>
     );

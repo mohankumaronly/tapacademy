@@ -22,6 +22,7 @@ import {
 import NavItem from './NavItem';
 import { useAuth } from '../../context/AuthContext';
 import { getPublicProfiles } from '../../services/profile.service';
+import TapAcademyLogo from '../../common/TapAcademyLogo';
 
 let debounceTimer;
 
@@ -40,7 +41,6 @@ const Header = () => {
     const searchDropdownRef = useRef(null);
     const mobileMenuRef = useRef(null);
 
-    // Close menus when clicking outside
     useEffect(() => {
         const handleClickOutside = (event) => {
             if (profileMenuRef.current && !profileMenuRef.current.contains(event.target)) {
@@ -57,7 +57,6 @@ const Header = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    // Close mobile menu on route change
     useEffect(() => {
         setShowMobileMenu(false);
     }, [location.pathname]);
@@ -121,7 +120,6 @@ const Header = () => {
         return location.pathname === path;
     };
 
-    // Get avatar URL from user object
     const getAvatarUrl = () => {
         return user?.avatarUrl || null;
     };
@@ -134,9 +132,7 @@ const Header = () => {
             className="bg-white border-b border-gray-200 fixed top-0 w-full z-50"
         >
             <nav className="flex items-center justify-between max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
-                {/* Left section - Logo and mobile menu */}
                 <div className="flex items-center gap-2 sm:gap-4">
-                    {/* Mobile menu button */}
                     <button
                         onClick={() => setShowMobileMenu(!showMobileMenu)}
                         className="lg:hidden p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -149,19 +145,16 @@ const Header = () => {
                         )}
                     </button>
 
-                    {/* Logo */}
-                    <motion.div 
+                   <motion.div 
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
-                        onClick={() => navigate('/feed')}
-                        className="flex items-center text-blue-600 font-bold text-xl sm:text-2xl cursor-pointer"
-                    >
-                        <Linkedin className="w-6 h-6 sm:w-8 sm:h-8 mr-1" />
-                        <span className="text-gray-800 hidden xs:inline">LinkedIn</span>
+                        onClick={() => navigate('/home')}
+                        className="cursor-pointer scale-75" 
+                        >
+                        <TapAcademyLogo />
                     </motion.div>
                 </div>
                 
-                {/* Search Bar - Hidden on mobile */}
                 <div className="hidden md:block flex-1 max-w-md mx-4 relative" ref={searchDropdownRef}>
                     <div className="relative group">
                         <Search className={`absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 transition-colors ${
@@ -182,7 +175,6 @@ const Header = () => {
                         )}
                     </div>
 
-                    {/* Search Suggestions Dropdown */}
                     <AnimatePresence>
                         {showSearchDropdown && suggestions.length > 0 && (
                             <motion.div 
@@ -216,7 +208,6 @@ const Header = () => {
                                     </motion.div>
                                 ))}
                                 
-                                {/* View all results option - FIXED with leading slash */}
                                 <motion.div
                                     whileHover={{ backgroundColor: '#f3f4f6' }}
                                     onClick={() => {
@@ -234,7 +225,6 @@ const Header = () => {
                     </AnimatePresence>
                 </div>
                 
-                {/* Desktop Navigation Icons */}
                 <div className="hidden lg:flex items-center space-x-1 xl:space-x-2">
                     <NavItem 
                         icon={Home} 
@@ -306,7 +296,6 @@ const Header = () => {
                                     transition={{ duration: 0.2 }}
                                     className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50"
                                 >
-                                    {/* User Info */}
                                     <div className="px-4 py-3 border-b border-gray-100">
                                         <p className="font-semibold text-gray-900">
                                             {user?.firstName} {user?.lastName}
@@ -446,4 +435,4 @@ const MobileNavItem = ({ icon: Icon, label, active, onClick }) => (
     </button>
 );
 
-export default Header;      
+export default Header;
