@@ -4,7 +4,7 @@ import Header from "./LayoutComponents/Header";
 
 const EditProfileLayout = ({ children }) => {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Header />
       
       <main className="pt-20">

@@ -21,6 +21,9 @@ import PublicProfilePage from "../pages/Home/PublicProfilePage";
 import PublicProfilesPage from "../pages/Home/PublicProfilesPage";
 import CreatePostPage from "../pages/posts/CreatePostPage";
 import FeedPage from "../pages/posts/FeedPage";
+import SettingsPage from "../pages/Home/SettingsPage";
+import MessagesPage from "../pages/Home/MessagesPage";
+import NotificationPage from "../pages/Home/NotificationPage.jsx";
 
 const AppRouters = () => {
   return (
@@ -100,6 +103,33 @@ const AppRouters = () => {
         element={
           <RequireAuth>
             <PublicProfilePage />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/settings"
+        element={
+          <RequireAuth>
+            <SettingsPage />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/messages"
+        element={
+          <RequireAuth>
+            <MessagesPage />
+          </RequireAuth>
+        }
+      />
+
+      <Route
+        path="/notifications"
+        element={
+          <RequireAuth>
+            <NotificationPage />
           </RequireAuth>
         }
       />
