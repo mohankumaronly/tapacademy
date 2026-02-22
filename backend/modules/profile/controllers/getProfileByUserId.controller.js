@@ -1,5 +1,5 @@
 const UserProfile = require("../models/profile.models");
-const Follow = require("../models/follow.model"); // Import Follow model to check follow status
+const Follow = require("../models/follow.model");
 
 /**
  * Get public profile by user ID (for viewing other users' profiles)
@@ -22,8 +22,8 @@ const getProfileByUserId = async (req, res) => {
 
     // Find profile by userId
     const profile = await UserProfile.findOne({ userId: userId })
-      .populate("userId", "firstName lastName email") // Populate user details
-      .lean(); // Convert to plain JavaScript object
+      .populate("userId", "firstName lastName email")
+      .lean();
 
     // Check if profile exists
     if (!profile) {
@@ -34,7 +34,8 @@ const getProfileByUserId = async (req, res) => {
     }
 
     // Check if profile is private and not the owner
-    if (!profile.isProfilePublic && userId !== currentUserId) {
+    const isOwner = userId === currentUserId;
+    if (!profile.isProfilePublic && !isOwner) {
       return res.status(403).json({
         success: false,
         message: "This profile is private"
@@ -47,7 +48,7 @@ const getProfileByUserId = async (req, res) => {
     
     // Check if current user is following this profile
     let isFollowing = false;
-    if (currentUserId && currentUserId !== userId) {
+    if (currentUserId && !isOwner) {
       const followRelation = await Follow.findOne({
         follower: currentUserId,
         following: userId
@@ -63,17 +64,17 @@ const getProfileByUserId = async (req, res) => {
       bio: profile.bio || "",
       avatarUrl: profile.avatarUrl || null,
       
-      // Skills & Tech Stack (only show if profile is public or owner)
+      // Skills & Tech Stack
       skills: profile.skills || [],
       techStack: profile.techStack || [],
       interests: profile.interests || [],
       
-      // Social Links (only show if profile is public or owner)
-      github: (profile.isProfilePublic || userId === currentUserId) ? profile.github || "" : null,
-      linkedin: (profile.isProfilePublic || userId === currentUserId) ? profile.linkedin || "" : null,
-      twitter: (profile.isProfilePublic || userId === currentUserId) ? profile.twitter || "" : null,
-      portfolio: (profile.isProfilePublic || userId === currentUserId) ? profile.portfolio || "" : null,
-      website: (profile.isProfilePublic || userId === currentUserId) ? profile.website || "" : null,
+      // Social Links (conditionally shown based on privacy)
+      github: (profile.isProfilePublic || isOwner) ? profile.github || "" : null,
+      linkedin: (profile.isProfilePublic || isOwner) ? profile.linkedin || "" : null,
+      twitter: (profile.isProfilePublic || isOwner) ? profile.twitter || "" : null,
+      portfolio: (profile.isProfilePublic || isOwner) ? profile.portfolio || "" : null,
+      website: (profile.isProfilePublic || isOwner) ? profile.website || "" : null,
       
       // Professional Info
       company: profile.company || "",
@@ -107,21 +108,12 @@ const getProfileByUserId = async (req, res) => {
         id: profile.userId._id || profile.userId,
         firstName: profile.userId.firstName || "",
         lastName: profile.userId.lastName || "",
-        email: profile.isProfilePublic || userId === currentUserId ? profile.userId.email : undefined,
+        email: (profile.isProfilePublic || isOwner) ? profile.userId.email : undefined,
         fullName: profile.userId.firstName && profile.userId.lastName 
           ? `${profile.userId.firstName} ${profile.userId.lastName}` 
           : profile.userId.firstName || profile.userId.lastName || "User"
       } : null
     };
-
-    // Remove sensitive data for private profiles viewed by non-owners
-    if (!profile.isProfilePublic && userId !== currentUserId) {
-      // This case should have been caught above, but just in case
-      return res.status(403).json({
-        success: false,
-        message: "This profile is private"
-      });
-    }
 
     // Return success response
     res.status(200).json({

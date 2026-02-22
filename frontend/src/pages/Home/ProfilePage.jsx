@@ -7,7 +7,7 @@ import {
   Folder, GitBranch, Star, Users, BookOpen,
   Edit3, Camera, Check, X, Save, Clock, Heart,
   Twitter, Globe, MessageCircle, UserPlus,
-  Terminal, Cpu, Coffee, Zap
+  Terminal, Cpu, Coffee, Zap, Lock, Sparkles
 } from "lucide-react";
 
 import { useAuth } from "../../context/AuthContext";
@@ -20,6 +20,8 @@ import {
   getMyProfile,
   updateProfile,
   uploadAvatar,
+  getProfileById,
+  toggleVisibility,
 } from "../../services/profile.service";
 
 import {
@@ -28,36 +30,6 @@ import {
   getFollowers,
   getFollowing,
 } from "../../services/follow.service";
-
-// Project Card Component
-const ProjectCard = ({ project }) => (
-  <motion.div
-    whileHover={{ y: -4 }}
-    className="bg-gray-50 rounded-xl p-5 border border-gray-200 hover:border-blue-200 transition-all"
-  >
-    <div className="flex items-start justify-between mb-3">
-      <div className="flex items-center gap-2">
-        <Folder size={18} className="text-blue-600" />
-        <h4 className="font-medium text-gray-900">{project.name}</h4>
-      </div>
-      <a href={project.url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-gray-600">
-        <ExternalLink size={14} />
-      </a>
-    </div>
-    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{project.description}</p>
-    <div className="flex items-center gap-3 text-xs text-gray-500">
-      <span className="flex items-center gap-1">
-        <Star size={12} /> {project.stars}
-      </span>
-      <span className="flex items-center gap-1">
-        <GitBranch size={12} /> {project.forks}
-      </span>
-      <span className="flex items-center gap-1">
-        <Code size={12} /> {project.language}
-      </span>
-    </div>
-  </motion.div>
-);
 
 // Skill Tag Component
 const SkillTag = ({ skill, level }) => (
@@ -71,6 +43,13 @@ const SkillTag = ({ skill, level }) => (
       </div>
     )}
   </div>
+);
+
+// Interest Tag Component
+const InterestTag = ({ interest }) => (
+  <span className="inline-block px-3 py-1.5 bg-purple-50 text-purple-700 rounded-lg text-sm hover:bg-purple-100 transition-colors cursor-default">
+    {interest}
+  </span>
 );
 
 // Stat Card Component
@@ -104,6 +83,7 @@ const ProfilePage = () => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [activeSection, setActiveSection] = useState("overview");
+  const [profileOwner, setProfileOwner] = useState(null);
 
   const { formData, onChange, setFormData } = useInputText({
     headline: "",
@@ -141,79 +121,99 @@ const ProfilePage = () => {
   const [followersList, setFollowersList] = useState([]);
   const [followingList, setFollowingList] = useState([]);
 
-  // Mock projects data
-  const [projects] = useState([
-    { name: "Developer Portfolio", description: "Modern portfolio with React and Tailwind", stars: 45, forks: 12, language: "TypeScript", url: "#" },
-    { name: "API Gateway", description: "Microservices API gateway with rate limiting", stars: 89, forks: 23, language: "Go", url: "#" },
-    { name: "ML Pipeline", description: "Machine learning data pipeline", stars: 34, forks: 8, language: "Python", url: "#" },
-    { name: "DevOps Tools", description: "Kubernetes deployment tools", stars: 67, forks: 15, language: "Rust", url: "#" },
-  ]);
-
   useEffect(() => {
     if (!profileUserId) return;
 
     const loadProfile = async () => {
-      const res = await getMyProfile(profileUserId);
-      const p = res.data.data;
+      try {
+        let res;
+        if (isMyProfile) {
+          res = await getMyProfile(profileUserId);
+        } else {
+          res = await getProfileById(profileUserId);
+        }
+        
+        const p = res.data.data;
+        setProfileOwner(p.user || p.userId);
 
-      setFormData({
-        headline: p.headline || "",
-        bio: p.bio || "",
-        skills: p.skills?.join(", ") || "",
-        github: p.github || "",
-        linkedin: p.linkedin || "",
-        portfolio: p.portfolio || "",
-        education: p.education || "",
-        college: p.college || "",
-        batchName: p.batchName || "",
-        location: p.location || "",
-        isProfilePublic: p.isProfilePublic ?? true,
-        avatarUrl: p.avatarUrl || "",
-        twitter: p.twitter || "",
-        website: p.website || "",
-        experience: p.experience || "",
-        company: p.company || "",
-        role: p.role || "",
-        techStack: p.techStack || "",
-        interests: p.interests || "",
-      });
+        setFormData({
+          headline: p.headline || "",
+          bio: p.bio || "",
+          skills: Array.isArray(p.skills) ? p.skills.join(", ") : p.skills || "",
+          github: p.github || "",
+          linkedin: p.linkedin || "",
+          portfolio: p.portfolio || "",
+          education: p.education || "",
+          college: p.college || "",
+          batchName: p.batchName || "",
+          location: p.location || "",
+          isProfilePublic: p.isProfilePublic ?? true,
+          avatarUrl: p.avatarUrl || "",
+          twitter: p.twitter || "",
+          website: p.website || "",
+          experience: p.experience || "",
+          company: p.company || "",
+          role: p.role || "",
+          techStack: Array.isArray(p.techStack) ? p.techStack.join(", ") : p.techStack || "",
+          interests: Array.isArray(p.interests) ? p.interests.join(", ") : p.interests || "",
+        });
+      } catch (error) {
+        console.error("Error loading profile:", error);
+        setMessage("Failed to load profile");
+      }
     };
 
     loadProfile();
-  }, [profileUserId, setFormData]);
+  }, [profileUserId, isMyProfile, setFormData]);
 
   useEffect(() => {
     if (!profileUserId) return;
 
     const loadStats = async () => {
-      const res = await getFollowStats(profileUserId);
-      setFollowStats(res.data.data);
+      try {
+        const res = await getFollowStats(profileUserId);
+        setFollowStats(res.data.data);
+      } catch (error) {
+        console.error("Error loading follow stats:", error);
+      }
     };
 
     loadStats();
   }, [profileUserId]);
 
   const handleFollow = async () => {
-    const res = await toggleFollow(profileUserId);
-    const followed = res.data.followed;
+    try {
+      const res = await toggleFollow(profileUserId);
+      const followed = res.data.followed;
 
-    setFollowStats(prev => ({
-      ...prev,
-      isFollowing: followed,
-      followers: followed ? prev.followers + 1 : Math.max(prev.followers - 1, 0),
-    }));
+      setFollowStats(prev => ({
+        ...prev,
+        isFollowing: followed,
+        followers: followed ? prev.followers + 1 : Math.max(prev.followers - 1, 0),
+      }));
+    } catch (error) {
+      console.error("Error toggling follow:", error);
+    }
   };
 
   const openFollowers = async () => {
-    const res = await getFollowers(profileUserId);
-    setFollowersList(res.data.data);
-    setShowFollowers(true);
+    try {
+      const res = await getFollowers(profileUserId);
+      setFollowersList(res.data.data);
+      setShowFollowers(true);
+    } catch (error) {
+      console.error("Error fetching followers:", error);
+    }
   };
 
   const openFollowing = async () => {
-    const res = await getFollowing(profileUserId);
-    setFollowingList(res.data.data);
-    setShowFollowing(true);
+    try {
+      const res = await getFollowing(profileUserId);
+      setFollowingList(res.data.data);
+      setShowFollowing(true);
+    } catch (error) {
+      console.error("Error fetching following:", error);
+    }
   };
 
   const handleAvatarUpload = async e => {
@@ -221,42 +221,111 @@ const ProfilePage = () => {
     if (!file || !file.type.startsWith("image/")) return;
 
     setUploadingAvatar(true);
-    const res = await uploadAvatar(file);
-    setFormData(p => ({ ...p, avatarUrl: res.data.data.avatarUrl }));
-    setUploadingAvatar(false);
+    try {
+      const res = await uploadAvatar(file);
+      setFormData(p => ({ ...p, avatarUrl: res.data.data.avatarUrl }));
+    } catch (error) {
+      console.error("Error uploading avatar:", error);
+      setMessage("Failed to upload avatar");
+    } finally {
+      setUploadingAvatar(false);
+    }
   };
 
   const handleSubmit = async e => {
     e.preventDefault();
     setSaving(true);
 
-    await updateProfile({
-      ...formData,
-      skills: formData.skills.split(",").map(s => s.trim()).filter(Boolean),
-      techStack: formData.techStack.split(",").map(t => t.trim()).filter(Boolean),
-    });
+    try {
+      await updateProfile({
+        ...formData,
+        skills: formData.skills.split(",").map(s => s.trim()).filter(Boolean),
+        techStack: formData.techStack.split(",").map(t => t.trim()).filter(Boolean),
+        interests: formData.interests.split(",").map(i => i.trim()).filter(Boolean),
+      });
+      setMessage("Profile updated successfully");
+      setIsEditing(false);
+      setTimeout(() => setMessage(""), 3000);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      setMessage("Failed to update profile");
+    } finally {
+      setSaving(false);
+    }
+  };
 
-    setMessage("Profile updated successfully");
-    setSaving(false);
-    setIsEditing(false);
-    setTimeout(() => setMessage(""), 3000);
+  const handleToggleVisibility = async () => {
+    try {
+      const res = await toggleVisibility();
+      setFormData(p => ({ ...p, isProfilePublic: res.data.data.isProfilePublic }));
+      setMessage(`Profile is now ${res.data.data.isProfilePublic ? 'public' : 'private'}`);
+      setTimeout(() => setMessage(""), 3000);
+    } catch (error) {
+      console.error("Error toggling visibility:", error);
+      setMessage("Failed to toggle visibility");
+    }
   };
 
   const getInitials = () => {
+    if (profileOwner?.firstName && profileOwner?.lastName) {
+      return `${profileOwner.firstName[0]}${profileOwner.lastName[0]}`.toUpperCase();
+    }
     if (user?.firstName && user?.lastName) {
       return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
     }
     return user?.email?.[0]?.toUpperCase() || 'U';
   };
 
+  const getDisplayName = () => {
+    if (profileOwner?.firstName && profileOwner?.lastName) {
+      return `${profileOwner.firstName} ${profileOwner.lastName}`;
+    }
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    return "User";
+  };
+
+  const renderSkills = () => {
+    const skills = formData.skills?.split(',').map(s => s.trim()).filter(Boolean) || [];
+    const techStack = formData.techStack?.split(',').map(t => t.trim()).filter(Boolean) || [];
+    const allSkills = [...new Set([...skills, ...techStack])];
+    
+    if (allSkills.length === 0) {
+      return <p className="text-gray-400">No skills added</p>;
+    }
+    
+    return allSkills.map((skill, i) => (
+      <SkillTag key={i} skill={skill} level="Expert" />
+    ));
+  };
+
+  const renderInterests = () => {
+    const interests = formData.interests?.split(',').map(i => i.trim()).filter(Boolean) || [];
+    if (interests.length === 0) return null;
+    
+    return (
+      <div className="bg-white rounded-xl border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <Sparkles size={18} className="text-purple-600" />
+          Interests
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          {interests.map((interest, i) => (
+            <InterestTag key={i} interest={interest} />
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   const sections = [
     { id: "overview", label: "Overview", icon: Users },
-    { id: "projects", label: "Projects", icon: Folder },
     { id: "skills", label: "Skills", icon: Code },
     { id: "experience", label: "Experience", icon: Briefcase },
   ];
 
-  if (loading || !user) {
+  if (loading) {
     return (
       <EditProfileLayout>
         <div className="flex items-center justify-center min-h-[60vh]">
@@ -280,7 +349,7 @@ const ProfilePage = () => {
               <div className="relative">
                 <div className="w-32 h-32 rounded-2xl border-4 border-gray-100 overflow-hidden bg-gradient-to-br from-blue-500 to-purple-500">
                   {formData.avatarUrl ? (
-                    <img src={formData.avatarUrl} className="w-full h-full object-cover" />
+                    <img src={formData.avatarUrl} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-white text-4xl font-bold">
                       {getInitials()}
@@ -289,8 +358,12 @@ const ProfilePage = () => {
                 </div>
                 {isMyProfile && (
                   <label className="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center cursor-pointer hover:bg-blue-700 transition-colors shadow-lg">
-                    <Camera size={14} className="text-white" />
-                    <input hidden type="file" accept="image/*" onChange={handleAvatarUpload} />
+                    {uploadingAvatar ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                    ) : (
+                      <Camera size={14} className="text-white" />
+                    )}
+                    <input hidden type="file" accept="image/*" onChange={handleAvatarUpload} disabled={uploadingAvatar} />
                   </label>
                 )}
               </div>
@@ -301,7 +374,7 @@ const ProfilePage = () => {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
                 <div>
                   <h1 className="text-3xl font-bold text-gray-900 mb-1">
-                    {user?.firstName} {user?.lastName}
+                    {getDisplayName()}
                   </h1>
                   <p className="text-lg text-gray-600">{formData.headline || "Developer"}</p>
                   {formData.company && formData.role && (
@@ -311,32 +384,47 @@ const ProfilePage = () => {
                   )}
                 </div>
 
-                {!isMyProfile ? (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={handleFollow}
-                      className={`px-6 py-2.5 rounded-lg font-medium transition-all flex items-center gap-2 ${
-                        followStats.isFollowing
-                          ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          : 'bg-blue-600 text-white hover:bg-blue-700'
-                      }`}
-                    >
-                      {followStats.isFollowing ? <Check size={18} /> : <UserPlus size={18} />}
-                      {followStats.isFollowing ? 'Following' : 'Follow'}
-                    </button>
-                    <button className="px-6 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                      <Mail size={18} />
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="px-6 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
-                  >
-                    <Edit3 size={18} />
-                    Edit Profile
-                  </button>
-                )}
+                <div className="flex gap-2">
+                  {!isMyProfile ? (
+                    <>
+                      <button
+                        onClick={handleFollow}
+                        className={`px-6 py-2.5 rounded-lg font-medium transition-all flex items-center gap-2 ${
+                          followStats.isFollowing
+                            ? 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            : 'bg-blue-600 text-white hover:bg-blue-700'
+                        }`}
+                      >
+                        {followStats.isFollowing ? <Check size={18} /> : <UserPlus size={18} />}
+                        {followStats.isFollowing ? 'Following' : 'Follow'}
+                      </button>
+                      <button className="px-6 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors">
+                        <Mail size={18} />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="px-6 py-2.5 border border-gray-300 rounded-lg font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-2"
+                      >
+                        <Edit3 size={18} />
+                        Edit Profile
+                      </button>
+                      <button
+                        onClick={handleToggleVisibility}
+                        className={`px-4 py-2.5 rounded-lg font-medium transition-colors ${
+                          formData.isProfilePublic
+                            ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                        title={formData.isProfilePublic ? "Profile is public" : "Profile is private"}
+                      >
+                        {formData.isProfilePublic ? <Globe size={18} /> : <Lock size={18} />}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Location & Links */}
@@ -375,6 +463,13 @@ const ProfilePage = () => {
                     Portfolio
                   </a>
                 )}
+                {formData.website && (
+                  <a href={formData.website} target="_blank" rel="noopener noreferrer"
+                     className="text-sm text-gray-500 hover:text-gray-900 flex items-center gap-1">
+                    <ExternalLink size={14} />
+                    Website
+                  </a>
+                )}
               </div>
 
               {/* Stats */}
@@ -400,23 +495,22 @@ const ProfilePage = () => {
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-          <StatCard icon={Code} label="Repositories" value="24" trend="+3 this month" />
-          <StatCard icon={Star} label="Stars" value="156" />
-          <StatCard icon={GitBranch} label="Contributions" value="342" trend="+47" />
-          <StatCard icon={Coffee} label="Days Coding" value="365" />
-        </div>
+        {/* Simplified Stats Grid - removed GitHub related stats
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <StatCard icon={Users} label="Profile Views" value="156" />
+          <StatCard icon={Award} label="Projects" value="8" />
+          <StatCard icon={Clock} label="Member Since" value="2024" />
+        </div> */}
 
-        {/* Section Navigation */}
-        <div className="flex border-b border-gray-200 mb-6">
+        {/* Section Navigation - removed projects tab */}
+        <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
           {sections.map((section) => {
             const Icon = section.icon;
             return (
               <button
                 key={section.id}
                 onClick={() => setActiveSection(section.id)}
-                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 whitespace-nowrap ${
                   activeSection === section.id
                     ? 'border-blue-600 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
@@ -446,107 +540,96 @@ const ProfilePage = () => {
                   <div className="bg-white rounded-xl border border-gray-200 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">About</h3>
                     <p className="text-gray-600 leading-relaxed">
-                      {formData.bio || "Passionate developer with a focus on building scalable applications and solving complex problems."}
+                      {formData.bio || "No bio added yet."}
                     </p>
-                  </div>
-
-                  {/* Recent Projects */}
-                  <div className="bg-white rounded-xl border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-gray-900">Recent Projects</h3>
-                      <button className="text-sm text-blue-600 hover:text-blue-700">View all</button>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {projects.map((project, i) => (
-                        <ProjectCard key={i} project={project} />
-                      ))}
-                    </div>
                   </div>
                 </div>
 
                 <div className="space-y-6">
-                  {/* Tech Stack */}
+                  {/* Tech Stack & Skills */}
                   <div className="bg-white rounded-xl border border-gray-200 p-6">
                     <h3 className="text-lg font-semibold text-gray-900 mb-3">Tech Stack</h3>
                     <div className="flex flex-wrap gap-2">
-                      {formData.skills ? (
-                        formData.skills.split(',').map((skill, i) => (
-                          <SkillTag key={i} skill={skill.trim()} level="Expert" />
-                        ))
-                      ) : (
-                        <p className="text-gray-400">No skills added</p>
-                      )}
+                      {renderSkills()}
                     </div>
                   </div>
 
-                  {/* Experience */}
-                  {(formData.experience || formData.company) && (
-                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Experience</h3>
-                      {formData.company && (
-                        <div className="mb-3">
-                          <p className="font-medium text-gray-900">{formData.role || "Developer"}</p>
-                          <p className="text-sm text-gray-600">{formData.company}</p>
-                        </div>
-                      )}
-                      {formData.experience && (
-                        <p className="text-sm text-gray-600">{formData.experience}</p>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Education */}
-                  {(formData.education || formData.college) && (
-                    <div className="bg-white rounded-xl border border-gray-200 p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-3">Education</h3>
-                      {formData.education && (
-                        <p className="font-medium text-gray-900">{formData.education}</p>
-                      )}
-                      {formData.college && (
-                        <p className="text-sm text-gray-600 mt-1">{formData.college}</p>
-                      )}
-                      {formData.batchName && (
-                        <p className="text-xs text-gray-400 mt-2">Class of {formData.batchName}</p>
-                      )}
-                    </div>
-                  )}
+                  {/* Interests */}
+                  {renderInterests()}
                 </div>
-              </div>
-            )}
-
-            {/* Projects Section */}
-            {activeSection === "projects" && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {projects.map((project, i) => (
-                  <ProjectCard key={i} project={project} />
-                ))}
               </div>
             )}
 
             {/* Skills Section */}
             {activeSection === "skills" && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <div className="flex flex-wrap gap-2">
-                  {formData.skills ? (
-                    formData.skills.split(',').map((skill, i) => (
-                      <SkillTag key={i} skill={skill.trim()} level="Expert" />
-                    ))
-                  ) : (
-                    <p className="text-gray-400">No skills added</p>
-                  )}
+              <div className="space-y-6">
+                <div className="bg-white rounded-xl border border-gray-200 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Skills & Technologies</h3>
+                  <div className="flex flex-wrap gap-2">
+                    {renderSkills()}
+                  </div>
                 </div>
+                {renderInterests()}
               </div>
             )}
 
             {/* Experience Section */}
             {activeSection === "experience" && (
-              <div className="bg-white rounded-xl border border-gray-200 p-6">
-                <p className="text-gray-600">
-                  {formData.experience || "No experience details added yet."}
-                </p>
+              <div className="space-y-6">
+                {(formData.experience || formData.company) && (
+                  <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Work Experience</h3>
+                    {formData.company && (
+                      <div className="mb-3">
+                        <p className="font-medium text-gray-900">{formData.role || "Developer"}</p>
+                        <p className="text-sm text-gray-600">{formData.company}</p>
+                      </div>
+                    )}
+                    {formData.experience && (
+                      <p className="text-sm text-gray-600">{formData.experience}</p>
+                    )}
+                  </div>
+                )}
+
+                {(formData.education || formData.college) && (
+                  <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">Education</h3>
+                    {formData.education && (
+                      <p className="font-medium text-gray-900">{formData.education}</p>
+                    )}
+                    {formData.college && (
+                      <p className="text-sm text-gray-600 mt-1">{formData.college}</p>
+                    )}
+                    {formData.batchName && (
+                      <p className="text-xs text-gray-400 mt-2">Class of {formData.batchName}</p>
+                    )}
+                  </div>
+                )}
+
+                {!formData.experience && !formData.company && !formData.education && !formData.college && (
+                  <div className="bg-white rounded-xl border border-gray-200 p-6">
+                    <p className="text-gray-400">No experience or education details added yet.</p>
+                  </div>
+                )}
               </div>
             )}
           </motion.div>
+        </AnimatePresence>
+
+        {/* Message Toast */}
+        <AnimatePresence>
+          {message && (
+            <motion.div
+              initial={{ opacity: 0, y: 50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 50 }}
+              className={`fixed bottom-4 right-4 px-6 py-3 rounded-lg shadow-lg ${
+                message.includes('Failed') ? 'bg-red-500' : 'bg-green-500'
+              } text-white`}
+            >
+              {message}
+            </motion.div>
+          )}
         </AnimatePresence>
       </div>
 
@@ -578,12 +661,12 @@ const ProfilePage = () => {
                 <InputText name="role" label="Role" value={formData.role} onChange={onChange} />
                 <InputText name="skills" label="Skills (comma separated)" value={formData.skills} onChange={onChange} />
                 <InputText name="techStack" label="Tech Stack (comma separated)" value={formData.techStack} onChange={onChange} />
+                <InputText name="interests" label="Interests (comma separated)" value={formData.interests} onChange={onChange} />
                 <InputText name="experience" label="Experience" value={formData.experience} onChange={onChange} multiline rows={3} />
                 <InputText name="education" label="Education" value={formData.education} onChange={onChange} />
                 <InputText name="college" label="College" value={formData.college} onChange={onChange} />
                 <InputText name="batchName" label="Batch Year" value={formData.batchName} onChange={onChange} />
                 <InputText name="location" label="Location" value={formData.location} onChange={onChange} />
-                <InputText name="interests" label="Interests" value={formData.interests} onChange={onChange} />
                 
                 <div className="pt-4 border-t border-gray-100">
                   <h3 className="font-medium mb-3">Social Links</h3>
@@ -595,10 +678,6 @@ const ProfilePage = () => {
                     <InputText name="website" label="Website" value={formData.website} onChange={onChange} />
                   </div>
                 </div>
-
-                {message && (
-                  <p className="text-green-600 text-sm text-center">{message}</p>
-                )}
 
                 <div className="flex justify-end gap-3 pt-4">
                   <button

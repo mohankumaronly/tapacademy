@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, UserCircle2, MapPin, ChevronRight, Users2, X } from "lucide-react";
+import { Search, UserCircle2, MapPin, ChevronRight, Users2, X, Briefcase, Code } from "lucide-react";
 
 import Loading from "../../components/Loading";
 import ExploreCommunityLayout from "../../layouts/ExploreCommunityLayout";
@@ -19,7 +19,15 @@ const PublicProfilesPage = () => {
   const [suggestions, setSuggestions] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
-  const [showDropdown, setShowDropdown] = useState(false);  
+  const [showDropdown, setShowDropdown] = useState(false);
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    totalCount: 0,
+    hasNextPage: false,
+    hasPrevPage: false,
+    limit: 12
+  });
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -32,16 +40,24 @@ const PublicProfilesPage = () => {
   }, []);
 
   useEffect(() => {
-    fetchProfiles("");
+    fetchProfiles("", 1, pagination.limit);
   }, []);
 
-  const fetchProfiles = async (query) => {
+  const fetchProfiles = async (query, page = 1, limit = pagination.limit) => {
     setLoading(true);
     try {
-      const res = await getPublicProfiles(query);
+      const res = await getPublicProfiles(query, page, limit);
       setProfiles(res.data.data);
+      setPagination(res.data.pagination || {
+        currentPage: page,
+        totalPages: 1,
+        totalCount: res.data.data.length,
+        hasNextPage: false,
+        hasPrevPage: page > 1,
+        limit: limit
+      });
     } catch (err) {
-      console.error("Failed to fetch profiles");
+      console.error("Failed to fetch profiles:", err);
     } finally {
       setLoading(false);
     }
@@ -54,17 +70,25 @@ const PublicProfilesPage = () => {
     if (!value.trim()) {
       setSuggestions([]);
       setShowDropdown(false);
-      fetchProfiles("");
+      fetchProfiles("", 1, pagination.limit);
       return;
     }
 
     setLoading(true);
     debounceTimer = setTimeout(async () => {
       try {
-        const res = await getPublicProfiles(value);
-        setSuggestions(res.data.data.slice(0, 5));
+        const res = await getPublicProfiles(value, 1, 5); // Get only 5 for suggestions
+        setSuggestions(res.data.data);
         setShowDropdown(true);
         setProfiles(res.data.data);
+        setPagination(res.data.pagination || {
+          currentPage: 1,
+          totalPages: 1,
+          totalCount: res.data.data.length,
+          hasNextPage: false,
+          hasPrevPage: false,
+          limit: pagination.limit
+        });
       } catch (error) {
         console.error("Search failed:", error);
       } finally {
@@ -77,13 +101,58 @@ const PublicProfilesPage = () => {
     setSearch("");
     setSuggestions([]);
     setShowDropdown(false);
-    fetchProfiles("");
+    fetchProfiles("", 1, pagination.limit);
   };
 
   const openProfile = (id) => {
     setShowDropdown(false);
     setSearch("");
     navigate(`/profile/${id}`);
+  };
+
+  const loadMore = () => {
+    if (pagination.hasNextPage) {
+      fetchProfiles(search, pagination.currentPage + 1, pagination.limit);
+    }
+  };
+
+  const handleSortChange = (e) => {
+    const sortValue = e.target.value;
+    // Implement sorting logic here
+    const sortedProfiles = [...profiles];
+    switch(sortValue) {
+      case "alphabetical":
+        sortedProfiles.sort((a, b) => 
+          (a.user?.firstName || "").localeCompare(b.user?.firstName || "")
+        );
+        break;
+      case "recent":
+        // Sort by createdAt date
+        sortedProfiles.sort((a, b) => 
+          new Date(b.createdAt) - new Date(a.createdAt)
+        );
+        break;
+      default:
+        // Most relevant - keep as is
+        break;
+    }
+    setProfiles(sortedProfiles);
+  };
+
+  const renderSkills = (skills = [], techStack = []) => {
+    const allSkills = [...new Set([...skills, ...techStack])].slice(0, 3);
+    if (allSkills.length === 0) return null;
+    
+    return (
+      <div className="flex flex-wrap gap-1 justify-center mb-3">
+        {allSkills.map((skill, i) => (
+          <span key={i} className="px-2 py-1 bg-blue-50 text-blue-600 rounded text-xs">
+            {skill}
+          </span>
+        ))}
+        {allSkills.length > 3 && <span className="text-xs text-gray-400">+{allSkills.length - 3}</span>}
+      </div>
+    );
   };
 
   if (loading && profiles.length === 0) return <Loading />;
@@ -156,24 +225,28 @@ const PublicProfilesPage = () => {
                 >
                   {suggestions.map((profile, index) => (
                     <motion.div
-                      key={profile._id}
+                      key={profile.id || profile._id}
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.05 }}
                       whileHover={{ backgroundColor: '#f3f4f6' }}
-                      onClick={() => openProfile(profile.userId._id)}
+                      onClick={() => openProfile(profile.userId?._id || profile.userId)}
                       className="flex items-center gap-4 p-4 cursor-pointer border-b last:border-none"
                     >
                       <img
                         src={profile.avatarUrl || "/avatar-placeholder.png"}
                         className="w-12 h-12 rounded-full object-cover border-2 border-gray-100"
-                        alt={profile.userId?.firstName || 'User'}
+                        alt={profile.user?.firstName || profile.userId?.firstName || 'User'}
+                        onError={(e) => e.target.src = "/avatar-placeholder.png"}
                       />
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900">
-                          {profile.userId?.firstName} {profile.userId?.lastName}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-gray-900 truncate">
+                          {profile.user?.fullName || 
+                           (profile.userId?.firstName && profile.userId?.lastName 
+                             ? `${profile.userId.firstName} ${profile.userId.lastName}`
+                             : profile.userId?.firstName || profile.userId?.lastName || "User")}
                         </p>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-gray-500 truncate">
                           {profile.headline || "No headline updated"}
                         </p>
                         {profile.location && (
@@ -182,7 +255,7 @@ const PublicProfilesPage = () => {
                           </p>
                         )}
                       </div>
-                      <ChevronRight size={20} className="text-gray-300" />
+                      <ChevronRight size={20} className="text-gray-300 flex-shrink-0" />
                     </motion.div>
                   ))}
                 </motion.div>
@@ -192,7 +265,7 @@ const PublicProfilesPage = () => {
 
           <div className="flex flex-wrap items-center justify-center gap-2 mt-4">
             <span className="text-sm text-gray-400">Popular:</span>
-            {["Mohankumar", "Ganesh", "Govind", "Nandkumar", "Amar"].map((term) => (
+            {["Developer", "Designer", "Mentor", "Student", "Teacher"].map((term) => (
               <button
                 key={term}
                 onClick={() => handleSearchChange(term)}
@@ -213,44 +286,61 @@ const PublicProfilesPage = () => {
         >
           {profiles.length > 0 ? (
             <>
-              <div className="flex justify-between items-center mb-6">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <h2 className="text-lg font-semibold text-gray-700">
-                  {profiles.length} {profiles.length === 1 ? 'Professional' : 'Professionals'} found
+                  {pagination.totalCount} {pagination.totalCount === 1 ? 'Professional' : 'Professionals'} found
                 </h2>
-                <select className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white">
-                  <option>Most Relevant</option>
-                  <option>Recently Active</option>
-                  <option>Alphabetical</option>
+                <select 
+                  onChange={handleSortChange}
+                  className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-400 outline-none"
+                >
+                  <option value="relevant">Most Relevant</option>
+                  <option value="recent">Recently Active</option>
+                  <option value="alphabetical">Alphabetical</option>
                 </select>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {profiles.map((profile, index) => (
                   <motion.div
-                    key={profile._id}
+                    key={profile.id || profile._id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
                     whileHover={{ y: -8 }}
-                    onClick={() => navigate(`/profile/${profile.userId._id}`)}
+                    onClick={() => navigate(`/profile/${profile.userId?._id || profile.userId}`)}
                     className="group bg-white border border-gray-200 rounded-2xl p-6 hover:shadow-xl hover:border-blue-200 cursor-pointer transition-all duration-300 flex flex-col items-center text-center"
                   >
                     <div className="relative mb-4">
                       <img
                         src={profile.avatarUrl || "/avatar-placeholder.png"}
                         className="w-28 h-28 rounded-full object-cover border-4 border-gray-50 group-hover:border-blue-100 transition-all"
-                        alt={profile.userId?.firstName || 'Profile'}
+                        alt={profile.user?.fullName || 'Profile'}
+                        onError={(e) => e.target.src = "/avatar-placeholder.png"}
                       />
                       <div className="absolute bottom-1 right-1 bg-green-500 w-4 h-4 rounded-full border-2 border-white"></div>
                     </div>
 
-                    <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-1">
-                      {profile.userId?.firstName} {profile.userId?.lastName}
+                    <h3 className="text-xl font-semibold text-gray-900 group-hover:text-blue-600 transition-colors mb-1 truncate w-full">
+                      {profile.user?.fullName || 
+                       (profile.userId?.firstName && profile.userId?.lastName 
+                         ? `${profile.userId.firstName} ${profile.userId.lastName}`
+                         : profile.userId?.firstName || profile.userId?.lastName || "User")}
                     </h3>
                     
                     <p className="text-sm text-gray-500 line-clamp-2 min-h-[40px] mb-3">
                       {profile.headline || <span className="text-gray-300 italic">No headline</span>}
                     </p>
+
+                    {/* Skills Preview */}
+                    {renderSkills(profile.skills, profile.techStack)}
+
+                    {profile.company && profile.role && (
+                      <p className="text-xs text-gray-500 flex items-center gap-1 mb-2">
+                        <Briefcase size={12} className="text-gray-400" />
+                        {profile.role} at {profile.company}
+                      </p>
+                    )}
 
                     {profile.location && (
                       <p className="text-xs text-gray-400 flex items-center gap-1 mb-4">
@@ -261,6 +351,10 @@ const PublicProfilesPage = () => {
                     <motion.button 
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        // Handle connect action
+                      }}
                       className="mt-2 w-full py-2.5 bg-gray-50 group-hover:bg-blue-600 group-hover:text-white text-gray-600 rounded-xl text-sm font-semibold transition-colors"
                     >
                       Connect
@@ -283,14 +377,16 @@ const PublicProfilesPage = () => {
         </motion.div>
 
         {/* Load More Button */}
-        {profiles.length > 0 && profiles.length >= 12 && (
+        {pagination.hasNextPage && (
           <div className="flex justify-center pt-8">
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              className="px-8 py-3 bg-white border border-gray-200 rounded-full text-gray-600 font-medium hover:border-blue-300 hover:text-blue-600 hover:shadow-md transition-all"
+              onClick={loadMore}
+              disabled={loading}
+              className="px-8 py-3 bg-white border border-gray-200 rounded-full text-gray-600 font-medium hover:border-blue-300 hover:text-blue-600 hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Load More Profiles
+              {loading ? "Loading..." : "Load More Profiles"}
             </motion.button>
           </div>
         )}
