@@ -33,13 +33,32 @@ const profileSchema = new mongoose.Schema(
       },
     ],
 
+    techStack: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+
+    interests: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+
     github: String,
     linkedin: String,
+    twitter: String,
     portfolio: String,
+    website: String,
+
+    company: String,
+    role: String,
+    experience: String,
 
     education: String,
     college: String,
-
     batchName: String,
 
     location: String,
@@ -52,6 +71,6 @@ const profileSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-const UserProfile= mongoose.model("UserProfile", profileSchema);
+const UserProfile = mongoose.model("UserProfile", profileSchema);
 
 module.exports = UserProfile;
