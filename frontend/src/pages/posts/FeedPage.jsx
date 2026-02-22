@@ -11,17 +11,17 @@ import {
   Calendar,
   FileText,
   Smile,
-  Linkedin
+  Linkedin,
+  Loader2
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
-// import Loading from "../../components/Loading";
-// import HomePageLayout from "./HomePageLayout"; // Adjust the import path as needed
 import {
   feed,
   likePost,
   updatePost,
   deletePost,
+  createPost,
 } from "../../services/post.service";
 import { addComment, getComments } from "../../services/comment.service";
 import { toggleFollow } from "../../services/follow.service";
@@ -33,6 +33,9 @@ const FeedPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const menuRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const modalRef = useRef(null);
+  const videoRefs = useRef({});
 
   const [posts, setPosts] = useState([]);
   const [followingMap, setFollowingMap] = useState({});
@@ -46,10 +49,44 @@ const FeedPage = () => {
   const [menuOpen, setMenuOpen] = useState(null);
   const [editingPost, setEditingPost] = useState(null);
   const [editText, setEditText] = useState("");
-  const [showCreatePost, setShowCreatePost] = useState(false);
+  
+  const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
+  const [modalAnimation, setModalAnimation] = useState(""); // For animation classes
   const [newPostText, setNewPostText] = useState("");
+  const [newPostMedia, setNewPostMedia] = useState(null);
+  const [newPostPreview, setNewPostPreview] = useState(null);
+  const [createPostLoading, setCreatePostLoading] = useState(false);
+  const [createPostMessage, setCreatePostMessage] = useState({ text: "", type: "" });
 
-  /* CLOSE MENU */
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const video = entry.target;
+          if (entry.isIntersecting) {
+            video.play().catch(() => {}); 
+          } else {
+            video.pause();
+          }
+        });
+      },
+      {
+        threshold: 0.5,
+        rootMargin: "0px"
+      }
+    );
+
+    Object.values(videoRefs.current).forEach((video) => {
+      if (video) observer.observe(video);
+    });
+
+    return () => {
+      Object.values(videoRefs.current).forEach((video) => {
+        if (video) observer.unobserve(video);
+      });
+    };
+  }, [posts]); 
+
   useEffect(() => {
     const close = e => {
       if (menuRef.current && !menuRef.current.contains(e.target)) {
@@ -60,7 +97,25 @@ const FeedPage = () => {
     return () => document.removeEventListener("mousedown", close);
   }, []);
 
-  /* LOAD FEED */
+  useEffect(() => {
+    const closeModal = e => {
+      if (modalRef.current && !modalRef.current.contains(e.target)) {
+        handleCloseModal();
+      }
+    };
+    
+    if (isCreatePostModalOpen) {
+      setTimeout(() => setModalAnimation("animate-in fade-in zoom-in duration-300"), 100);
+      document.addEventListener("mousedown", closeModal);
+      document.body.style.overflow = 'hidden';
+    }
+    
+    return () => {
+      document.removeEventListener("mousedown", closeModal);
+      document.body.style.overflow = 'unset';
+    };
+  }, [isCreatePostModalOpen]);
+
   useEffect(() => {
     const loadFeed = async () => {
       try {
@@ -87,8 +142,13 @@ const FeedPage = () => {
     }
   }, [user]);
 
-  /* LIKE */
   const handleLike = async (postId) => {
+    const button = document.getElementById(`like-btn-${postId}`);
+    if (button) {
+      button.classList.add('scale-125');
+      setTimeout(() => button.classList.remove('scale-125'), 200);
+    }
+
     setPosts(p =>
       p.map(post =>
         post._id === postId
@@ -102,12 +162,13 @@ const FeedPage = () => {
       )
     );
 
-    try { await likePost(postId); } catch (error) {
+    try { 
+      await likePost(postId); 
+    } catch (error) {
       console.error("Error liking post:", error);
     }
   };
 
-  /* FOLLOW / UNFOLLOW */
   const handleFollow = async (authorId) => {
     setFollowingMap(prev => ({
       ...prev,
@@ -125,7 +186,6 @@ const FeedPage = () => {
     }
   };
 
-  /* EDIT */
   const startEdit = post => {
     setEditingPost(post._id);
     setEditText(post.text);
@@ -143,7 +203,6 @@ const FeedPage = () => {
     }
   };
 
-  /* DELETE */
   const handleDelete = async postId => {
     if (window.confirm("Delete this post?")) {
       try {
@@ -155,8 +214,13 @@ const FeedPage = () => {
     }
   };
 
-  /* COMMENTS */
   const toggleComments = async postId => {
+    const button = document.getElementById(`comment-btn-${postId}`);
+    if (button) {
+      button.classList.add('scale-125');
+      setTimeout(() => button.classList.remove('scale-125'), 200);
+    }
+
     setOpenComments(p => ({ ...p, [postId]: !p[postId] }));
 
     if (comments[postId]) return;
@@ -191,19 +255,89 @@ const FeedPage = () => {
     }
   };
 
-  /* CREATE POST */
-  const handleCreatePost = () => {
-    // Implement your create post logic here
-    setShowCreatePost(false);
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setNewPostMedia(file);
+    const url = URL.createObjectURL(file);
+    setNewPostPreview({
+      url,
+      type: file.type.startsWith("video") ? "video" : "image",
+    });
+  };
+
+  const removeNewPostMedia = () => {
+    setNewPostMedia(null);
+    setNewPostPreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const resetCreatePost = () => {
     setNewPostText("");
+    removeNewPostMedia();
+    setCreatePostMessage({ text: "", type: "" });
+  };
+
+  const openCreatePostModal = () => {
+    setIsCreatePostModalOpen(true);
+    resetCreatePost();
+  };
+
+  const handleCloseModal = () => {
+    setModalAnimation("animate-out fade-out zoom-out duration-200");
+    setTimeout(() => {
+      setIsCreatePostModalOpen(false);
+      setModalAnimation("");
+      resetCreatePost();
+    }, 200);
+  };
+
+  const handleCreatePost = async () => {
+    if (!newPostText.trim() && !newPostMedia) {
+      return setCreatePostMessage({ 
+        text: "Please add some text or media", 
+        type: "error" 
+      });
+    }
+
+    const payload = new FormData();
+    payload.append("text", newPostText);
+    if (newPostMedia) payload.append("media", newPostMedia);
+
+    try {
+      setCreatePostLoading(true);
+      setCreatePostMessage({ text: "", type: "" });
+      
+      const res = await createPost(payload);
+      
+      setPosts(prevPosts => [res.data.data, ...prevPosts]);
+      
+      setCreatePostMessage({ 
+        text: "Post created successfully!", 
+        type: "success" 
+      });
+      
+      setTimeout(() => {
+        handleCloseModal();
+      }, 1000);
+      
+    } catch (error) {
+      console.error("Error creating post:", error);
+      setCreatePostMessage({ 
+        text: "Failed to create post. Try again.", 
+        type: "error" 
+      });
+    } finally {
+      setCreatePostLoading(false);
+    }
   };
 
   if (loading || !user) return <Loading />;
 
   return (
     <HomePageLayout>
-      {/* Create Post Box - LinkedIn Style */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4">
+      <div className="bg-white rounded-lg border border-gray-200 p-4 mb-4 animate-in slide-in-from-top-4 duration-300">
         <div className="flex items-center space-x-3">
           <img
             src={user?.avatarUrl || "/avatar-placeholder.png"}
@@ -211,78 +345,190 @@ const FeedPage = () => {
             alt="Your avatar"
           />
           <button
-            onClick={() => setShowCreatePost(true)}
+            onClick={openCreatePostModal}
             className="flex-1 text-left border border-gray-300 rounded-full px-4 py-2 text-gray-500 hover:bg-gray-50 transition-colors"
           >
             Start a post
           </button>
         </div>
 
-        {/* Create Post Modal/Input (simplified version) */}
-        {showCreatePost && (
-          <div className="mt-4 border-t pt-4">
-            <textarea
-              value={newPostText}
-              onChange={(e) => setNewPostText(e.target.value)}
-              placeholder="What do you want to talk about?"
-              className="w-full border rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows="3"
-            />
-            <div className="flex justify-between items-center mt-3">
-              <div className="flex space-x-2">
-                <button className="p-2 hover:bg-gray-100 rounded-full text-blue-500">
-                  <ImageIcon size={20} />
-                </button>
-                <button className="p-2 hover:bg-gray-100 rounded-full text-green-500">
-                  <Video size={20} />
-                </button>
-                <button className="p-2 hover:bg-gray-100 rounded-full text-yellow-500">
-                  <Smile size={20} />
-                </button>
-              </div>
-              <div className="space-x-2">
-                <button
-                  onClick={() => setShowCreatePost(false)}
-                  className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-full"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleCreatePost}
-                  disabled={!newPostText.trim()}
-                  className="px-4 py-2 text-sm bg-blue-600 text-white rounded-full hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Post
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Post Action Buttons */}
         <div className="flex justify-between mt-3 pt-3 border-t border-gray-200">
-          <PostActionButton icon={ImageIcon} text="Photo" color="text-blue-500" />
-          <PostActionButton icon={Video} text="Video" color="text-green-500" />
+          <PostActionButton 
+            icon={ImageIcon} 
+            text="Photo" 
+            color="text-blue-500" 
+            onClick={openCreatePostModal}
+          />
+          <PostActionButton 
+            icon={Video} 
+            text="Video" 
+            color="text-green-500"
+            onClick={openCreatePostModal}
+          />
           <PostActionButton icon={Calendar} text="Event" color="text-purple-500" />
           <PostActionButton icon={FileText} text="Write article" color="text-orange-500" />
         </div>
       </div>
 
-      {/* Feed Posts */}
+      {isCreatePostModalOpen && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div 
+            ref={modalRef}
+            className={`bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col ${modalAnimation}`}
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
+              <h2 className="text-xl font-semibold text-gray-800">Create a post</h2>
+              <button
+                onClick={handleCloseModal}
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors hover:rotate-90 duration-200"
+              >
+                <X size={20} className="text-gray-500" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 px-6 py-4">
+              <div className="flex items-center gap-3 mb-4">
+                <img
+                  src={user?.avatarUrl || "/avatar-placeholder.png"}
+                  className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
+                  alt="Your avatar"
+                />
+                <div>
+                  <p className="font-semibold text-gray-800">
+                    {user?.firstName} {user?.lastName}
+                  </p>
+                  <p className="text-xs text-gray-500">Post to anyone</p>
+                </div>
+              </div>
+
+              {createPostMessage.text && (
+                <div className={`mb-3 text-xs font-medium px-3 py-2 rounded-full ${
+                  createPostMessage.type === "success" 
+                    ? "bg-green-100 text-green-600" 
+                    : "bg-red-100 text-red-600"
+                }`}>
+                  {createPostMessage.text}
+                </div>
+              )}
+
+              <textarea
+                value={newPostText}
+                onChange={(e) => setNewPostText(e.target.value)}
+                placeholder="What do you want to talk about?"
+                className="w-full text-lg text-gray-800 placeholder-gray-400 border-none focus:ring-0 resize-none outline-none min-h-[120px]"
+                autoFocus
+              />
+
+              {newPostPreview && (
+                <div className="mt-4 animate-in fade-in zoom-in duration-300">
+                  <div className="relative group rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
+                    <button
+                      type="button"
+                      onClick={removeNewPostMedia}
+                      className="absolute top-2 right-2 z-10 p-1.5 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-md transition hover:scale-110 duration-200"
+                    >
+                      <X size={18} />
+                    </button>
+                    
+                    {newPostPreview.type === "image" ? (
+                      <img 
+                        src={newPostPreview.url} 
+                        alt="preview" 
+                        className="w-full h-auto max-h-[300px] object-contain" 
+                      />
+                    ) : (
+                      <video 
+                        src={newPostPreview.url} 
+                        controls 
+                        className="w-full max-h-[300px]" 
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex-shrink-0 border-t border-gray-200">
+              <div className="px-6 py-4 border-b border-gray-200">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-500">Add to your post:</span>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-full transition-all hover:scale-110 duration-200"
+                    title="Add Image"
+                  >
+                    <ImageIcon size={22} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="p-2 text-purple-600 hover:bg-purple-50 rounded-full transition-all hover:scale-110 duration-200"
+                    title="Add Video"
+                  >
+                    <Video size={22} />
+                  </button>
+                  
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,video/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 px-6 py-4">
+                <button
+                  type="button"
+                  onClick={handleCloseModal}
+                  className="px-4 py-2 text-sm font-semibold text-gray-600 hover:bg-gray-100 rounded-full transition hover:scale-105 duration-200"
+                >
+                  Cancel
+                </button>
+                
+                <button
+                  onClick={handleCreatePost}
+                  disabled={createPostLoading || (!newPostText.trim() && !newPostMedia)}
+                  className={`flex items-center gap-2 px-6 py-2 rounded-full font-bold transition-all ${
+                    createPostLoading || (!newPostText.trim() && !newPostMedia)
+                      ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                      : "bg-blue-600 text-white hover:bg-blue-700 active:scale-95 hover:scale-105 duration-200"
+                  }`}
+                >
+                  {createPostLoading ? (
+                    <>
+                      <Loader2 size={18} className="animate-spin" />
+                      Posting...
+                    </>
+                  ) : (
+                    'Post'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {posts.length === 0 ? (
-        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
-          <Linkedin className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+        <div className="bg-white rounded-lg border border-gray-200 p-8 text-center animate-in fade-in duration-500">
+          <Linkedin className="w-16 h-16 text-gray-300 mx-auto mb-4 animate-bounce" />
           <h3 className="text-lg font-semibold text-gray-700 mb-2">No posts yet</h3>
           <p className="text-gray-500">Follow people to see their posts here</p>
         </div>
       ) : (
-        posts.map(post => {
+        posts.map((post, index) => {
           const isOwner = String(post.author._id) === String(user.id);
           const hasLiked = post.likes.includes(user.id);
 
           return (
-            <div key={post._id} className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow mb-4">
-              {/* HEADER */}
+            <div 
+              key={post._id} 
+              className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500"
+              style={{ animationDelay: `${index * 100}ms` }}
+            >
               <div className="flex justify-between items-center p-4">
                 <div className="flex items-center gap-3">
                   <div
@@ -291,7 +537,7 @@ const FeedPage = () => {
                   >
                     <img
                       src={post.authorProfile?.avatarUrl || "/avatar-placeholder.png"}
-                      className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 group-hover:border-blue-500 transition-colors"
+                      className="w-12 h-12 rounded-full object-cover border-2 border-gray-200 group-hover:border-blue-500 transition-colors group-hover:scale-105 duration-200"
                       alt="avatar"
                     />
                     <div>
@@ -307,7 +553,7 @@ const FeedPage = () => {
                   {!isOwner && (
                     <button
                       onClick={() => handleFollow(post.author._id)}
-                      className={`text-xs px-3 py-1 rounded-full border transition ${
+                      className={`text-xs px-3 py-1 rounded-full border transition-all hover:scale-105 duration-200 ${
                         followingMap[post.author._id]
                           ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
                           : "bg-blue-600 text-white hover:bg-blue-700"
@@ -322,22 +568,25 @@ const FeedPage = () => {
                   <div className="relative">
                     <button
                       onClick={() => setMenuOpen(menuOpen === post._id ? null : post._id)}
-                      className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+                      className="p-1 rounded-full hover:bg-gray-100 transition-colors hover:rotate-90 duration-200"
                     >
                       <MoreVertical size={20} />
                     </button>
 
                     {menuOpen === post._id && (
-                      <div ref={menuRef} className="absolute right-0 mt-2 w-32 bg-white border rounded-lg shadow-lg z-50">
+                      <div 
+                        ref={menuRef} 
+                        className="absolute right-0 mt-2 w-32 bg-white border rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-top-2 duration-200"
+                      >
                         <button 
                           onClick={() => startEdit(post)} 
-                          className="block w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors"
+                          className="block w-full px-4 py-2 text-left hover:bg-gray-50 transition-colors hover:pl-6 duration-200"
                         >
                           Edit
                         </button>
                         <button 
                           onClick={() => handleDelete(post._id)} 
-                          className="block w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors"
+                          className="block w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 transition-colors hover:pl-6 duration-200"
                         >
                           Delete
                         </button>
@@ -347,10 +596,9 @@ const FeedPage = () => {
                 )}
               </div>
 
-              {/* TEXT */}
               <div className="px-4 pb-3">
                 {editingPost === post._id ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 animate-in fade-in duration-200">
                     <textarea
                       value={editText}
                       onChange={e => setEditText(e.target.value)}
@@ -360,13 +608,13 @@ const FeedPage = () => {
                     <div className="flex justify-end gap-2">
                       <button 
                         onClick={() => setEditingPost(null)}
-                        className="p-1 hover:bg-gray-100 rounded-full"
+                        className="p-1 hover:bg-gray-100 rounded-full transition-all hover:rotate-90 duration-200"
                       >
                         <X size={18}/>
                       </button>
                       <button 
                         onClick={() => saveEdit(post._id)}
-                        className="p-1 hover:bg-gray-100 rounded-full text-green-600"
+                        className="p-1 hover:bg-gray-100 rounded-full text-green-600 transition-all hover:scale-110 duration-200"
                       >
                         <Check size={18}/>
                       </button>
@@ -377,19 +625,22 @@ const FeedPage = () => {
                 )}
               </div>
 
-              {/* MEDIA */}
               {post.media?.url && (
                 <div className="border-y border-gray-200">
                   {post.postType === "image" ? (
                     <img 
                       src={post.media.url} 
-                      className="w-full max-h-[500px] object-contain bg-black/5"
+                      className="w-full max-h-[500px] object-contain bg-black/5 hover:scale-[1.02] transition-transform duration-300"
                       alt="Post content"
                     />
                   ) : (
                     <video 
+                      ref={el => videoRefs.current[post._id] = el}
                       controls 
-                      className="w-full max-h-[500px] bg-black/5"
+                      muted
+                      loop
+                      playsInline
+                      className="w-full max-h-[500px] bg-black/5 hover:scale-[1.02] transition-transform duration-300"
                     >
                       <source src={post.media.url} />
                     </video>
@@ -397,51 +648,53 @@ const FeedPage = () => {
                 </div>
               )}
 
-              {/* LIKES COUNT */}
               <div className="px-4 py-2 flex items-center justify-between border-b border-gray-200">
                 <div className="flex items-center space-x-1">
                   <div className="flex -space-x-1">
                     {post.likes.slice(0, 3).map((like, i) => (
-                      <div key={i} className="w-5 h-5 bg-blue-500 rounded-full border-2 border-white"></div>
+                      <div 
+                        key={i} 
+                        className="w-5 h-5 bg-blue-500 rounded-full border-2 border-white animate-in fade-in duration-300"
+                        style={{ animationDelay: `${i * 50}ms` }}
+                      ></div>
                     ))}
                   </div>
-                  <span className="text-sm text-gray-500">{post.likes.length} likes</span>
+                  <span className="text-sm text-gray-500">{post.likes.length} {post.likes.length === 1 ? 'like' : 'likes'}</span>
                 </div>
-                <span className="text-sm text-gray-500">{post.commentsCount} comments</span>
+                <span className="text-sm text-gray-500">{post.commentsCount} {post.commentsCount === 1 ? 'comment' : 'comments'}</span>
               </div>
 
-              {/* ACTIONS */}
               <div className="px-4 py-2 flex justify-around">
                 <button 
+                  id={`like-btn-${post._id}`}
                   onClick={() => handleLike(post._id)} 
-                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-colors ${
+                  className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-200 hover:scale-105 ${
                     hasLiked 
                       ? "text-red-500 hover:bg-red-50" 
                       : "text-gray-500 hover:bg-gray-100"
                   }`}
                 >
-                  <Heart className={`w-5 h-5 ${hasLiked && "fill-current"}`} />
+                  <Heart className={`w-5 h-5 transition-all duration-200 ${hasLiked && "fill-current scale-110"}`} />
                   <span className="text-sm font-medium">Like</span>
                 </button>
 
                 <button 
+                  id={`comment-btn-${post._id}`}
                   onClick={() => toggleComments(post._id)}
-                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
+                  className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-all duration-200 hover:scale-105"
                 >
-                  <MessageCircle className="w-5 h-5" />
+                  <MessageCircle className="w-5 h-5 transition-transform duration-200" />
                   <span className="text-sm font-medium">Comment</span>
                 </button>
 
-                <button className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors">
-                  <Send className="w-5 h-5" />
+                <button className="flex items-center space-x-2 px-4 py-2 rounded-lg text-gray-500 hover:bg-gray-100 transition-all duration-200 hover:scale-105">
+                  <Send className="w-5 h-5 transition-transform duration-200" />
                   <span className="text-sm font-medium">Share</span>
                 </button>
               </div>
 
-              {/* COMMENTS */}
               {openComments[post._id] && (
-                <div className="bg-gray-50 p-4 border-t border-gray-200">
-
+                <div className="bg-gray-50 p-4 border-t border-gray-200 animate-in slide-in-from-bottom-2 duration-300">
                   <div className="flex gap-2 mb-4">
                     <img
                       src={user?.avatarUrl || "/avatar-placeholder.png"}
@@ -452,7 +705,7 @@ const FeedPage = () => {
                       <input
                         value={commentText[post._id] || ""}
                         onChange={e => setCommentText(p => ({ ...p, [post._id]: e.target.value }))}
-                        className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:border-blue-300"
                         placeholder="Add a comment..."
                         onKeyPress={(e) => {
                           if (e.key === 'Enter') {
@@ -463,7 +716,7 @@ const FeedPage = () => {
                       <button 
                         onClick={() => handleAddComment(post._id)}
                         disabled={!commentText[post._id]?.trim()}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-full disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-110 duration-200"
                       >
                         <Send size={18}/>
                       </button>
@@ -476,15 +729,19 @@ const FeedPage = () => {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {comments[post._id]?.map(c => (
-                        <div key={c._id} className="flex gap-2">
+                      {comments[post._id]?.map((c, idx) => (
+                        <div 
+                          key={c._id} 
+                          className="flex gap-2 animate-in fade-in slide-in-from-left-2 duration-300"
+                          style={{ animationDelay: `${idx * 50}ms` }}
+                        >
                           <img 
                             src={c.authorProfile?.avatarUrl || "/avatar-placeholder.png"} 
                             className="w-8 h-8 rounded-full object-cover"
                             alt={c.author.firstName}
                           />
                           <div className="flex-1">
-                            <div className="bg-white px-4 py-2 rounded-2xl shadow-sm">
+                            <div className="bg-white px-4 py-2 rounded-2xl shadow-sm hover:shadow-md transition-shadow">
                               <p className="font-semibold text-sm">
                                 {c.author.firstName} {c.author.lastName}
                               </p>
@@ -511,10 +768,12 @@ const FeedPage = () => {
   );
 };
 
-// Helper component for post action buttons
-const PostActionButton = ({ icon: Icon, text, color }) => (
-  <button className="flex items-center space-x-2 text-gray-500 hover:bg-gray-50 px-4 py-2 rounded-md transition-colors group">
-    <Icon className={`w-5 h-5 ${color} group-hover:scale-110 transition-transform`} />
+const PostActionButton = ({ icon: Icon, text, color, onClick }) => (
+  <button 
+    onClick={onClick}
+    className="flex items-center space-x-2 text-gray-500 hover:bg-gray-50 px-4 py-2 rounded-md transition-all group hover:scale-105 duration-200"
+  >
+    <Icon className={`w-5 h-5 ${color} group-hover:scale-110 transition-transform duration-200`} />
     <span className="text-sm hidden md:block">{text}</span>
   </button>
 );

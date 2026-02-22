@@ -40,7 +40,6 @@ export const AuthProvider = ({ children }) => {
           });
         } catch (profileError) {
           console.error("Failed to fetch profile:", profileError);
-          // If profile fetch fails, still set the basic user
           setUser(basicUser);
         }
       } else {
@@ -60,9 +59,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       console.error("Logout error:", error);
     } finally {
-      // Always clear user state even if API fails
       setUser(null);
-      // Clear any stored tokens
       localStorage.clear();
       sessionStorage.clear();
     }

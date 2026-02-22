@@ -72,7 +72,7 @@ const SettingsPage = () => {
   const isDesktop = windowWidth >= 1024;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen">
       <Header />
       
       <main className="pt-14 sm:pt-16 md:pt-20 pb-8 sm:pb-12">
