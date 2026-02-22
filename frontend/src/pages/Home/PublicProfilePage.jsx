@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence} from "framer-motion";
 import { 
   MapPin, GraduationCap, Link as LinkIcon, Github, Linkedin, 
   Briefcase, UserPlus, Check, MessageCircle, MoreHorizontal,
@@ -9,8 +9,9 @@ import {
 
 import Loading from "../../components/Loading";
 import { getProfileById } from "../../services/profile.service";
-import { getFollowStats, toggleFollow } from "../../services/follow.service";
+import { getFollowStats, toggleFollow, getFollowers, getFollowing } from "../../services/follow.service";
 import { useAuth } from "../../context/AuthContext";
+import FollowListModal from "../../components/FollowListModal";
 
 const PublicProfilePage = () => {
   const { userId } = useParams();
@@ -22,6 +23,13 @@ const PublicProfilePage = () => {
   const [followLoading, setFollowLoading] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("about");
+  
+  // Modal states
+  const [showFollowers, setShowFollowers] = useState(false);
+  const [showFollowing, setShowFollowing] = useState(false);
+  const [followersList, setFollowersList] = useState([]);
+  const [followingList, setFollowingList] = useState([]);
+  const [loadingFollowers, setLoadingFollowers] = useState(false);
 
   const isOwnProfile = user?.id === userId;
 
@@ -74,6 +82,33 @@ const PublicProfilePage = () => {
       setFollowStats(originalStats);
     } finally {
       setFollowLoading(false);
+    }
+  };
+
+  // Modal handlers
+  const openFollowers = async () => {
+    try {
+      setLoadingFollowers(true);
+      const res = await getFollowers(userId);
+      setFollowersList(res.data.data || []);
+      setShowFollowers(true);
+    } catch (error) {
+      console.error("Error fetching followers:", error);
+    } finally {
+      setLoadingFollowers(false);
+    }
+  };
+
+  const openFollowing = async () => {
+    try {
+      setLoadingFollowers(true);
+      const res = await getFollowing(userId);
+      setFollowingList(res.data.data || []);
+      setShowFollowing(true);
+    } catch (error) {
+      console.error("Error fetching following:", error);
+    } finally {
+      setLoadingFollowers(false);
     }
   };
 
@@ -142,15 +177,24 @@ const PublicProfilePage = () => {
                     </p>
                   )}
 
+                  {/* Make followers/following clickable */}
                   <div className="flex justify-center gap-6 mt-4 pt-4 border-t border-gray-100 w-full">
-                    <div className="text-center">
+                    <button 
+                      onClick={openFollowers}
+                      className="text-center hover:opacity-80 transition-opacity"
+                      disabled={loadingFollowers}
+                    >
                       <span className="block font-bold text-gray-900">{followStats.followers}</span>
                       <span className="text-xs text-gray-500">Followers</span>
-                    </div>
-                    <div className="text-center">
+                    </button>
+                    <button 
+                      onClick={openFollowing}
+                      className="text-center hover:opacity-80 transition-opacity"
+                      disabled={loadingFollowers}
+                    >
                       <span className="block font-bold text-gray-900">{followStats.following}</span>
                       <span className="text-xs text-gray-500">Following</span>
-                    </div>
+                    </button>
                   </div>
 
                   {!isOwnProfile && (
@@ -388,8 +432,39 @@ const PublicProfilePage = () => {
           </div>
         </div>
       </div>
+
+      {/* Follow Modals */}
+      <AnimatePresence>
+        {showFollowers && (
+          <FollowListModal
+            title="Followers"
+            users={followersList}
+            onClose={() => setShowFollowers(false)}
+            onOpenProfile={(id) => {
+              setShowFollowers(false);
+              if (id === userId) return; // Don't navigate to same profile
+              navigate(`/profile/${id}`);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showFollowing && (
+          <FollowListModal
+            title="Following"
+            users={followingList}
+            onClose={() => setShowFollowing(false)}
+            onOpenProfile={(id) => {
+              setShowFollowing(false);
+              if (id === userId) return; // Don't navigate to same profile
+              navigate(`/profile/${id}`);
+            }}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };
 
-export default PublicProfilePage; 
+export default PublicProfilePage;

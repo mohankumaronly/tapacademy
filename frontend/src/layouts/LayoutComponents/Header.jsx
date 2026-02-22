@@ -61,7 +61,7 @@ const Header = () => {
         setShowMobileMenu(false);
     }, [location.pathname]);
 
-    const handleSearchChange = (value) => {
+    const handleSearchChange = async (value) => {
         setSearchQuery(value);
         clearTimeout(debounceTimer);
 
@@ -74,8 +74,10 @@ const Header = () => {
         setLoading(true);
         debounceTimer = setTimeout(async () => {
             try {
-                const res = await getPublicProfiles(value);
-                setSuggestions(res.data.data.slice(0, 5));
+                const res = await getPublicProfiles(value, 1, 5);
+                // Handle the response data structure correctly
+                const profiles = res.data.data || [];
+                setSuggestions(profiles);
                 setShowSearchDropdown(true);
             } catch (error) {
                 console.error('Search failed:', error);
@@ -122,6 +124,33 @@ const Header = () => {
 
     const getAvatarUrl = () => {
         return user?.avatarUrl || null;
+    };
+
+    // Helper function to safely get user ID from profile
+    const getUserId = (profile) => {
+        return profile.userId?._id || profile.userId || profile._id;
+    };
+
+    // Helper function to get user name from profile
+    const getUserName = (profile) => {
+        if (profile.user?.fullName) return profile.user.fullName;
+        if (profile.user?.firstName || profile.user?.lastName) {
+            return `${profile.user.firstName || ''} ${profile.user.lastName || ''}`.trim();
+        }
+        if (profile.userId?.firstName || profile.userId?.lastName) {
+            return `${profile.userId.firstName || ''} ${profile.userId.lastName || ''}`.trim();
+        }
+        return 'User';
+    };
+
+    // Helper function to get user headline
+    const getUserHeadline = (profile) => {
+        return profile.headline || profile.user?.headline || 'No headline';
+    };
+
+    // Helper function to get avatar URL
+    const getProfileAvatar = (profile) => {
+        return profile.avatarUrl || profile.user?.avatarUrl || "/avatar-placeholder.png";
     };
 
     return (
@@ -184,40 +213,56 @@ const Header = () => {
                                 transition={{ duration: 0.2 }}
                                 className="absolute w-full bg-white border border-gray-200 shadow-xl rounded-lg mt-1 z-50 overflow-hidden"
                             >
-                                {suggestions.map((profile) => (
-                                    <motion.div
-                                        key={profile._id}
-                                        whileHover={{ backgroundColor: '#f3f4f6' }}
-                                        onClick={() => openProfile(profile.userId._id)}
-                                        className="flex items-center gap-3 p-3 cursor-pointer border-b last:border-none"
-                                    >
-                                        <img
-                                            src={profile.avatarUrl || "/avatar-placeholder.png"}
-                                            className="w-8 h-8 rounded-full object-cover border border-gray-100"
-                                            alt={profile.userId?.firstName || 'User'}
-                                        />
-                                        <div className="flex-1 min-w-0">
-                                            <p className="font-medium text-sm text-gray-900 truncate">
-                                                {profile.userId?.firstName} {profile.userId?.lastName}
-                                            </p>
-                                            <p className="text-xs text-gray-500 truncate">
-                                                {profile.headline || 'No headline'}
-                                            </p>
-                                        </div>
-                                        <ChevronRight size={14} className="text-gray-300 flex-shrink-0" />
-                                    </motion.div>
-                                ))}
+                                {suggestions.map((profile, index) => {
+                                    const userId = getUserId(profile);
+                                    const userName = getUserName(profile);
+                                    const headline = getUserHeadline(profile);
+                                    const avatarUrl = getProfileAvatar(profile);
+                                    
+                                    return (
+                                        <motion.div
+                                            key={userId || index}
+                                            initial={{ opacity: 0, x: -10 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: index * 0.05 }}
+                                            whileHover={{ backgroundColor: '#f3f4f6' }}
+                                            onClick={() => openProfile(userId)}
+                                            className="flex items-center gap-3 p-3 cursor-pointer border-b last:border-none"
+                                        >
+                                            <img
+                                                src={avatarUrl}
+                                                className="w-8 h-8 rounded-full object-cover border border-gray-100"
+                                                alt={userName}
+                                                onError={(e) => e.target.src = "/avatar-placeholder.png"}
+                                            />
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-sm text-gray-900 truncate">
+                                                    {userName}
+                                                </p>
+                                                <p className="text-xs text-gray-500 truncate">
+                                                    {headline}
+                                                </p>
+                                                {profile.location && (
+                                                    <p className="text-xs text-gray-400 flex items-center gap-1 mt-1">
+                                                        <MapPin size={10} /> {profile.location}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <ChevronRight size={14} className="text-gray-300 flex-shrink-0" />
+                                        </motion.div>
+                                    );
+                                })}
                                 
                                 <motion.div
                                     whileHover={{ backgroundColor: '#f3f4f6' }}
                                     onClick={() => {
                                         setShowSearchDropdown(false);
-                                        navigate('/home/public-profiles'); 
+                                        navigate('/home/public-profiles?search=' + encodeURIComponent(searchQuery)); 
                                     }}
                                     className="p-2 text-center border-t border-gray-100 cursor-pointer bg-gray-50 hover:bg-gray-100"
                                 >
                                     <span className="text-xs text-blue-600 font-medium">
-                                        View all results
+                                        View all results ({suggestions.length})
                                     </span>
                                 </motion.div>
                             </motion.div>
@@ -392,10 +437,10 @@ const MobileNavigationMenu = React.forwardRef(({ navigate, isActive, onClose }, 
             />
             <MobileNavItem
                 icon={UserPen}
-                label="Jobs"
-                active={isActive('/home/jobs')}
+                label="Edit Profile"
+                active={isActive('/home/profile')}
                 onClick={() => {
-                    navigate('/home/jobs');
+                    navigate('/home/profile');
                     onClose();
                 }}
             />

@@ -19,7 +19,6 @@ const FollowListModal = ({ title, users, onClose, onOpenProfile }) => {
           className="bg-white w-[480px] rounded-3xl shadow-2xl overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
-          {/* Header - Clean and Minimal */}
           <div className="px-6 py-5 border-b border-gray-100">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -44,7 +43,6 @@ const FollowListModal = ({ title, users, onClose, onOpenProfile }) => {
             </div>
           </div>
 
-          {/* Users List */}
           <div className="max-h-[480px] overflow-y-auto">
             {(!users || users.length === 0) ? (
               <div className="text-center py-16 px-6">
@@ -75,7 +73,6 @@ const FollowListModal = ({ title, users, onClose, onOpenProfile }) => {
                       className="group relative"
                     >
                       <div className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50/80 cursor-pointer transition-all">
-                        {/* Avatar with subtle ring */}
                         <div className="relative">
                           <div className="absolute inset-0 rounded-full ring-2 ring-gray-100 group-hover:ring-gray-200 transition-all"></div>
                           <img
@@ -122,14 +119,12 @@ const FollowListModal = ({ title, users, onClose, onOpenProfile }) => {
                           </div>
                         </div>
 
-                        {/* Action Area */}
                         <div className="flex items-center gap-2">
                           <motion.button
                             whileHover={{ scale: 1.05, backgroundColor: '#f3f4f6' }}
                             whileTap={{ scale: 0.95 }}
                             onClick={(e) => {
                               e.stopPropagation();
-                              // Handle follow action
                             }}
                             className="p-2.5 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 transition-all"
                           >
@@ -145,7 +140,6 @@ const FollowListModal = ({ title, users, onClose, onOpenProfile }) => {
             )}
           </div>
 
-          {/* Footer */}
           {users && users.length > 0 && (
             <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50">
               <button className="w-full py-2.5 text-sm text-gray-600 hover:text-gray-900 font-medium transition-colors">
