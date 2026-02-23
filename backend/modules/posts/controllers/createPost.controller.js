@@ -1,3 +1,8 @@
+const fs = require('fs');
+const cloudinary = require('../../../utils/cloudinary');
+const UserProfile = require("../../profile/models/profile.models");
+const Post = require("../models/post.model");
+
 exports.createPost = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -23,22 +28,36 @@ exports.createPost = async (req, res) => {
     let media = null;
 
     if (req.file) {
-      const isImage = req.file.mimetype.startsWith("image/");
-      const isVideo = req.file.mimetype.startsWith("video/");
+      try {
+        const isImage = req.file.mimetype.startsWith("image/");
+        const isVideo = req.file.mimetype.startsWith("video/");
 
-      postType = isImage ? "image" : "video";
+        postType = isImage ? "image" : "video";
 
-      const uploadResult = await cloudinary.uploader.upload(req.file.path, {
-        folder: "posts",
-        resource_type: isVideo ? "video" : "image",
-      });
+        const uploadResult = await cloudinary.uploader.upload(req.file.path, {
+          folder: "posts",
+          resource_type: isVideo ? "video" : "image",
+        });
 
-      if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
+        if (fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
 
-      media = {
-        type: postType,
-        url: uploadResult.secure_url,
-      };
+        media = {
+          type: postType,
+          url: uploadResult.secure_url,
+          publicId: uploadResult.public_id
+        };
+      } catch (uploadError) {
+        console.error("Cloudinary upload error:", uploadError);
+        if (req.file?.path && fs.existsSync(req.file.path)) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(500).json({
+          success: false,
+          message: "Failed to upload media",
+        });
+      }
     }
 
     const post = await Post.create({
@@ -49,10 +68,9 @@ exports.createPost = async (req, res) => {
       media,
     });
 
-    // Get the populated post for response
     const populatedPost = await Post.findById(post._id)
-      .populate("author", "firstName lastName")
-      .populate("authorProfile", "avatarUrl")
+      .populate("author", "firstName lastName email")
+      .populate("authorProfile", "avatarUrl headline")
       .populate({
         path: "likes",
         select: "firstName lastName",
@@ -60,26 +78,35 @@ exports.createPost = async (req, res) => {
       })
       .lean();
 
-    // Fetch avatar for author
     const authorProfile = await UserProfile.findOne({ userId: post.author })
       .select("avatarUrl")
       .lean();
 
-    // Add avatar URL to author
     populatedPost.author = {
       ...populatedPost.author,
       avatarUrl: authorProfile?.avatarUrl || null
     };
 
-    // REALTIME BROADCAST
-    global.wss.clients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN && client.user) {
-        client.send(JSON.stringify({
+    populatedPost.reactionCounts = {
+      like: populatedPost.likes?.length || 0,
+    };
+
+    if (global.wss && global.wss.clients && WebSocket) {
+      try {
+        const message = JSON.stringify({
           type: "NEW_POST",
           data: populatedPost
-        }));
+        });
+
+        global.wss.clients.forEach(client => {
+          if (client.readyState === WebSocket.OPEN && client.user) {
+            client.send(message);
+          }
+        });
+      } catch (wsError) {
+        console.error("WebSocket broadcast error:", wsError);
       }
-    });
+    }
 
     res.status(201).json({
       success: true,
@@ -87,13 +114,22 @@ exports.createPost = async (req, res) => {
     });
 
   } catch (error) {
+    console.error("Create post error:", error);
+    console.error("Error details:", error.message);
+    console.error("Error stack:", error.stack);
+
     if (req.file?.path && fs.existsSync(req.file.path)) {
-      fs.unlinkSync(req.file.path);
+      try {
+        fs.unlinkSync(req.file.path);
+      } catch (unlinkError) {
+        console.error("Error deleting temp file:", unlinkError);
+      }
     }
 
     res.status(500).json({
       success: false,
       message: "Failed to create post",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };
