@@ -36,10 +36,13 @@ const FeedPage = () => {
   const fileInputRef = useRef(null);
   const modalRef = useRef(null);
   const videoRefs = useRef({});
+  const wsRef = useRef(null);
+  const reconnectTimeoutRef = useRef(null);
 
   const [posts, setPosts] = useState([]);
   const [followingMap, setFollowingMap] = useState({});
   const [loading, setLoading] = useState(true);
+  const [wsConnected, setWsConnected] = useState(false);
 
   const [openComments, setOpenComments] = useState({});
   const [comments, setComments] = useState({});
@@ -51,12 +54,165 @@ const FeedPage = () => {
   const [editText, setEditText] = useState("");
   
   const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
-  const [modalAnimation, setModalAnimation] = useState(""); // For animation classes
+  const [modalAnimation, setModalAnimation] = useState("");
   const [newPostText, setNewPostText] = useState("");
   const [newPostMedia, setNewPostMedia] = useState(null);
   const [newPostPreview, setNewPostPreview] = useState(null);
   const [createPostLoading, setCreatePostLoading] = useState(false);
   const [createPostMessage, setCreatePostMessage] = useState({ text: "", type: "" });
+
+  // WebSocket connection setup
+  useEffect(() => {
+    if (!user) return;
+
+    const connectWebSocket = () => {
+      // Use VITE_WS_URL from env (ws://localhost:8000)
+      const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
+      console.log('Connecting to WebSocket:', wsUrl);
+      
+      wsRef.current = new WebSocket(wsUrl);
+
+      wsRef.current.onopen = () => {
+        console.log('WebSocket connected');
+        setWsConnected(true);
+        
+        // Clear any reconnection timeout
+        if (reconnectTimeoutRef.current) {
+          clearTimeout(reconnectTimeoutRef.current);
+          reconnectTimeoutRef.current = null;
+        }
+        
+        // Get token from localStorage (assuming you store it there during login)
+        const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
+        
+        if (token) {
+          wsRef.current.send(JSON.stringify({
+            type: 'AUTH',
+            token: token
+          }));
+        } else {
+          console.warn('No token found for WebSocket authentication');
+        }
+      };
+
+      wsRef.current.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          console.log('WebSocket message received:', message.type);
+          
+          switch (message.type) {
+            case 'NEW_POST':
+              handleNewPost(message.data);
+              break;
+            case 'POST_UPDATED':
+              handlePostUpdated(message.data);
+              break;
+            case 'POST_DELETED':
+              handlePostDeleted(message.data.postId);
+              break;
+            default:
+              console.log('Unknown message type:', message.type);
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+
+      wsRef.current.onerror = (error) => {
+        console.error('WebSocket error:', error);
+        setWsConnected(false);
+      };
+
+      wsRef.current.onclose = (event) => {
+        console.log('WebSocket disconnected:', event.code, event.reason);
+        setWsConnected(false);
+        
+        // Attempt to reconnect after 5 seconds
+        if (!reconnectTimeoutRef.current) {
+          reconnectTimeoutRef.current = setTimeout(() => {
+            console.log('Attempting to reconnect WebSocket...');
+            reconnectTimeoutRef.current = null;
+            connectWebSocket();
+          }, 5000);
+        }
+      };
+    };
+
+    connectWebSocket();
+
+    // Cleanup on unmount
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+      if (wsRef.current) {
+        wsRef.current.close();
+      }
+    };
+  }, [user]);
+
+  // Handle new post from WebSocket
+  const handleNewPost = (newPost) => {
+    // Check if post already exists to avoid duplicates
+    setPosts(prevPosts => {
+      const postExists = prevPosts.some(post => post._id === newPost._id);
+      if (postExists) return prevPosts;
+      
+      // Add animation class to new post
+      const postWithAnimation = {
+        ...newPost,
+        isNew: true
+      };
+      
+      // Remove animation class after animation completes
+      setTimeout(() => {
+        setPosts(current => 
+          current.map(p => 
+            p._id === newPost._id ? { ...p, isNew: false } : p
+          )
+        );
+      }, 3000);
+      
+      return [postWithAnimation, ...prevPosts];
+    });
+
+    // Update following map for the new post's author
+    setFollowingMap(prev => ({
+      ...prev,
+      [newPost.author._id]: newPost.isFollowingAuthor || false
+    }));
+
+    // Show notification (optional)
+    if (Notification.permission === 'granted') {
+      new Notification('New Post', {
+        body: `${newPost.author.firstName} ${newPost.author.lastName} posted something new`,
+        icon: newPost.authorProfile?.avatarUrl || '/avatar-placeholder.png'
+      });
+    }
+  };
+
+  // Handle post update from WebSocket
+  const handlePostUpdated = (updatedPost) => {
+    setPosts(prevPosts =>
+      prevPosts.map(post =>
+        post._id === updatedPost._id
+          ? { ...updatedPost, isUpdated: true }
+          : post
+      )
+    );
+  };
+
+  // Handle post deletion from WebSocket
+  const handlePostDeleted = (postId) => {
+    setPosts(prevPosts => prevPosts.filter(post => post._id !== postId));
+  };
+
+  // Request notification permission
+  useEffect(() => {
+    if (Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -311,8 +467,6 @@ const FeedPage = () => {
       
       const res = await createPost(payload);
       
-      setPosts(prevPosts => [res.data.data, ...prevPosts]);
-      
       setCreatePostMessage({ 
         text: "Post created successfully!", 
         type: "success" 
@@ -352,6 +506,14 @@ const FeedPage = () => {
           </button>
         </div>
 
+        {/* WebSocket connection status indicator (optional) */}
+        {!wsConnected && (
+          <div className="mt-2 text-xs text-yellow-600 flex items-center gap-1">
+            <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
+            Reconnecting to real-time updates...
+          </div>
+        )}
+
         <div className="flex justify-between mt-3 pt-3 border-t border-gray-200">
           <PostActionButton 
             icon={ImageIcon} 
@@ -376,6 +538,7 @@ const FeedPage = () => {
             ref={modalRef}
             className={`bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col ${modalAnimation}`}
           >
+            {/* ... rest of the modal JSX remains the same ... */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
               <h2 className="text-xl font-semibold text-gray-800">Create a post</h2>
               <button
@@ -526,9 +689,17 @@ const FeedPage = () => {
           return (
             <div 
               key={post._id} 
-              className="bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500"
+              className={`bg-white rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all mb-4 animate-in fade-in slide-in-from-bottom-4 duration-500 ${
+                post.isNew ? 'ring-2 ring-blue-500 ring-opacity-50 bg-blue-50/30' : ''
+              }`}
               style={{ animationDelay: `${index * 100}ms` }}
             >
+              {post.isNew && (
+                <div className="bg-blue-500 text-white text-xs font-semibold px-3 py-1 rounded-t-lg">
+                  New Post
+                </div>
+              )}
+              {/* ... rest of the post JSX remains the same ... */}
               <div className="flex justify-between items-center p-4">
                 <div className="flex items-center gap-3">
                   <div

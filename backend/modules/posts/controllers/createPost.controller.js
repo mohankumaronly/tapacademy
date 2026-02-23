@@ -2,6 +2,7 @@ const fs = require("fs");
 const Post = require("../models/post.model");
 const cloudinary = require("../../../utils/cloudinary");
 const UserProfile = require("../../profile/models/profile.models");
+const WebSocket = require("ws"); // add this
 
 exports.createPost = async (req, res) => {
   try {
@@ -54,10 +55,21 @@ exports.createPost = async (req, res) => {
       media,
     });
 
+    //REALTIME BROADCAST (new part)
+    global.wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN && client.user) {
+        client.send(JSON.stringify({
+          type: "NEW_POST",
+          data: post
+        }));
+      }
+    });
+
     res.status(201).json({
       success: true,
       data: post,
     });
+
   } catch (error) {
     if (req.file?.path && fs.existsSync(req.file.path)) {
       fs.unlinkSync(req.file.path);

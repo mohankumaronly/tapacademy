@@ -4,6 +4,9 @@ const express = require("express");
 const cors = require("cors");
 const cookieParser = require("cookie-parser");
 const helmet = require("helmet");
+const http = require("http");
+const WebSocket = require("ws");
+const jwt = require("jsonwebtoken");
 const authRouter = require("./modules/auth/routers/auth.routers");
 const profileRouters = require("./modules/profile/routers/profile.routes");
 const postRouter = require("./modules/posts/Routes/Post.Routes");
@@ -47,13 +50,51 @@ app.use('/api/post', postRouter);
 app.use("/api/comments", commentRouter);
 // app.use('/api/payment', paymentRouter);
 
+const getCookie = (cookieString, name) => {
+  if (!cookieString) return null;
+
+  const match = cookieString
+    .split("; ")
+    .find(row => row.startsWith(name + "="));
+
+  return match ? match.split("=")[1] : null;
+};
+
 
 const startServer = async () => {
   try {
     await databaseConnection(process.env.MONGODB_URL);
 
-    const server = app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
+    const server = http.createServer(app);
+
+    const wss = new WebSocket.Server({ server });
+    global.wss = wss;
+
+    wss.on("connection", (ws, req) => {
+      try {
+        const token = getCookie(req.headers.cookie, "accessToken");
+
+        if (!token) {
+          ws.close();
+          return;
+        }
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
+
+        ws.user = decoded;
+
+        console.log("Realtime authenticated:", ws.user.userId);
+
+      } catch (err) {
+        console.log("Socket auth failed");
+        ws.close();
+      }
+
+      ws.on("close", () => console.log("Realtime disconnected"));
+    });
+
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT} with WebSocket enabled`);
     });
 
     process.on("SIGTERM", () => {
