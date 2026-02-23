@@ -66,7 +66,6 @@ const FeedPage = () => {
     if (!user) return;
 
     const connectWebSocket = () => {
-      // Use VITE_WS_URL from env (ws://localhost:8000)
       const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
       console.log('Connecting to WebSocket:', wsUrl);
       
@@ -76,13 +75,11 @@ const FeedPage = () => {
         console.log('WebSocket connected');
         setWsConnected(true);
         
-        // Clear any reconnection timeout
         if (reconnectTimeoutRef.current) {
           clearTimeout(reconnectTimeoutRef.current);
           reconnectTimeoutRef.current = null;
         }
         
-        // Get token from localStorage (assuming you store it there during login)
         const token = localStorage.getItem('token') || localStorage.getItem('accessToken');
         
         if (token) {
@@ -110,6 +107,9 @@ const FeedPage = () => {
             case 'POST_DELETED':
               handlePostDeleted(message.data.postId);
               break;
+            case 'POST_LIKED':
+              handlePostLiked(message.data);
+              break;
             default:
               console.log('Unknown message type:', message.type);
           }
@@ -127,7 +127,6 @@ const FeedPage = () => {
         console.log('WebSocket disconnected:', event.code, event.reason);
         setWsConnected(false);
         
-        // Attempt to reconnect after 5 seconds
         if (!reconnectTimeoutRef.current) {
           reconnectTimeoutRef.current = setTimeout(() => {
             console.log('Attempting to reconnect WebSocket...');
@@ -140,7 +139,6 @@ const FeedPage = () => {
 
     connectWebSocket();
 
-    // Cleanup on unmount
     return () => {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
@@ -153,18 +151,15 @@ const FeedPage = () => {
 
   // Handle new post from WebSocket
   const handleNewPost = (newPost) => {
-    // Check if post already exists to avoid duplicates
     setPosts(prevPosts => {
       const postExists = prevPosts.some(post => post._id === newPost._id);
       if (postExists) return prevPosts;
       
-      // Add animation class to new post
       const postWithAnimation = {
         ...newPost,
         isNew: true
       };
       
-      // Remove animation class after animation completes
       setTimeout(() => {
         setPosts(current => 
           current.map(p => 
@@ -176,13 +171,11 @@ const FeedPage = () => {
       return [postWithAnimation, ...prevPosts];
     });
 
-    // Update following map for the new post's author
     setFollowingMap(prev => ({
       ...prev,
       [newPost.author._id]: newPost.isFollowingAuthor || false
     }));
 
-    // Show notification (optional)
     if (Notification.permission === 'granted') {
       new Notification('New Post', {
         body: `${newPost.author.firstName} ${newPost.author.lastName} posted something new`,
@@ -205,6 +198,44 @@ const FeedPage = () => {
   // Handle post deletion from WebSocket
   const handlePostDeleted = (postId) => {
     setPosts(prevPosts => prevPosts.filter(post => post._id !== postId));
+  };
+
+  // Handle post like from WebSocket
+  const handlePostLiked = (likeData) => {
+    const { postId, userId, liked, likesCount } = likeData;
+    
+    setPosts(prevPosts => 
+      prevPosts.map(post => {
+        if (post._id === postId) {
+          // Update the likes array based on the like action
+          let updatedLikes;
+          if (liked) {
+            // Add user to likes if not already there
+            updatedLikes = post.likes.includes(userId) 
+              ? post.likes 
+              : [...post.likes, userId];
+          } else {
+            // Remove user from likes
+            updatedLikes = post.likes.filter(id => id !== userId);
+          }
+          
+          return {
+            ...post,
+            likes: updatedLikes
+          };
+        }
+        return post;
+      })
+    );
+
+    // Optional: Show a small animation on the liked post
+    const likeButton = document.getElementById(`like-btn-${postId}`);
+    if (likeButton && userId !== user?.id) {
+      likeButton.classList.add('ring-2', 'ring-blue-400', 'ring-opacity-50');
+      setTimeout(() => {
+        likeButton.classList.remove('ring-2', 'ring-blue-400', 'ring-opacity-50');
+      }, 500);
+    }
   };
 
   // Request notification permission
@@ -299,20 +330,24 @@ const FeedPage = () => {
   }, [user]);
 
   const handleLike = async (postId) => {
+    // Optimistic update
     const button = document.getElementById(`like-btn-${postId}`);
     if (button) {
       button.classList.add('scale-125');
       setTimeout(() => button.classList.remove('scale-125'), 200);
     }
 
+    const currentUser = user.id;
+    const isCurrentlyLiked = posts.find(p => p._id === postId)?.likes.includes(currentUser);
+
     setPosts(p =>
       p.map(post =>
         post._id === postId
           ? {
               ...post,
-              likes: post.likes.includes(user.id)
-                ? post.likes.filter(id => id !== user.id)
-                : [...post.likes, user.id],
+              likes: isCurrentlyLiked
+                ? post.likes.filter(id => id !== currentUser)
+                : [...post.likes, currentUser],
             }
           : post
       )
@@ -322,6 +357,19 @@ const FeedPage = () => {
       await likePost(postId); 
     } catch (error) {
       console.error("Error liking post:", error);
+      // Revert on error
+      setPosts(p =>
+        p.map(post =>
+          post._id === postId
+            ? {
+                ...post,
+                likes: isCurrentlyLiked
+                  ? [...post.likes, currentUser]
+                  : post.likes.filter(id => id !== currentUser),
+              }
+            : post
+        )
+      );
     }
   };
 
@@ -506,7 +554,6 @@ const FeedPage = () => {
           </button>
         </div>
 
-        {/* WebSocket connection status indicator (optional) */}
         {!wsConnected && (
           <div className="mt-2 text-xs text-yellow-600 flex items-center gap-1">
             <div className="w-2 h-2 bg-yellow-500 rounded-full animate-pulse"></div>
@@ -538,7 +585,6 @@ const FeedPage = () => {
             ref={modalRef}
             className={`bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col ${modalAnimation}`}
           >
-            {/* ... rest of the modal JSX remains the same ... */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 flex-shrink-0">
               <h2 className="text-xl font-semibold text-gray-800">Create a post</h2>
               <button
@@ -699,7 +745,6 @@ const FeedPage = () => {
                   New Post
                 </div>
               )}
-              {/* ... rest of the post JSX remains the same ... */}
               <div className="flex justify-between items-center p-4">
                 <div className="flex items-center gap-3">
                   <div
