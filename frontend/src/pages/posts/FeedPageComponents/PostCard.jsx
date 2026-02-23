@@ -35,7 +35,6 @@ const PostCard = ({
   const navigate = useNavigate();
   const videoRefs = useRef({});
 
-  // Video intersection observer
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {

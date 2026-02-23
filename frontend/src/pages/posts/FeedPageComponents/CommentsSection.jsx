@@ -1,20 +1,37 @@
 import { Send } from "lucide-react";
+import { useEffect, useRef } from "react";
 import Comment from "./Comment";
 
 const CommentsSection = ({
   postId,
   user,
-  comments,
+  comments = [], 
   commentText,
   loading,
   onAddComment,
   onCommentChange
 }) => {
+  const commentsEndRef = useRef(null);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (comments?.length > 0) {
+      commentsEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [comments?.length]);
+
   const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault(); 
       onAddComment(postId);
     }
   };
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, []);
 
   return (
     <div 
@@ -29,15 +46,17 @@ const CommentsSection = ({
         />
         <div className="flex-1 flex gap-2">
           <input
-            value={commentText}
+            ref={inputRef}
+            value={commentText || ""}
             onChange={(e) => onCommentChange(e.target.value)}
             onKeyPress={handleKeyPress}
             className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:border-blue-300"
             placeholder="Add a comment..."
+            disabled={loading}
           />
           <button 
             onClick={() => onAddComment(postId)}
-            disabled={!commentText?.trim()}
+            disabled={!commentText?.trim() || loading}
             className="p-2 text-blue-600 hover:bg-blue-50 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-110 duration-200"
           >
             <Send size={18}/>
@@ -50,13 +69,15 @@ const CommentsSection = ({
           <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
         </div>
       ) : (
-        <div className="space-y-3">
-          {comments?.map((c, idx) => (
-            <Comment key={c._id} comment={c} index={idx} />
-          ))}
-          {(!comments || comments.length === 0) && (
-            <p className="text-center text-gray-500 py-2">No comments yet</p>
+        <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+          {comments && comments.length > 0 ? (
+            comments.map((c, idx) => (
+              <Comment key={c._id} comment={c} index={idx} />
+            ))
+          ) : (
+            <p className="text-center text-gray-500 py-4">No comments yet. Be the first to comment!</p>
           )}
+          <div ref={commentsEndRef} />
         </div>
       )}
     </div>

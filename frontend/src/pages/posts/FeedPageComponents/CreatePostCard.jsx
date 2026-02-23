@@ -24,7 +24,6 @@ const CreatePostCard = ({ user, wsConnected, onOpenModal }) => {
           Reconnecting to real-time updates...
         </div>
       )}
-
       <div className="flex justify-between mt-3 pt-3 border-t border-gray-200">
         <PostActionButton icon={Image} text="Photo" color="text-blue-500" onClick={onOpenModal} />
         <PostActionButton icon={Video} text="Video" color="text-green-500" onClick={onOpenModal} />

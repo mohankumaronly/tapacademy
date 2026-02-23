@@ -12,7 +12,6 @@ import useWebSocket from "./FeedPageComponents/hooks/useWebSocket";
 import useComments from "./FeedPageComponents/hooks/useComments";
 import usePostActions from "./FeedPageComponents/hooks/usePostActions";
 
-
 const FeedPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -22,14 +21,6 @@ const FeedPage = () => {
   const [loading, setLoading] = useState(true);
   const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
 
-  const { wsConnected } = useWebSocket(user, {
-    onNewPost: handleNewPost,
-    onPostUpdated: handlePostUpdated,
-    onPostDeleted: handlePostDeleted,
-    onPostLiked: handlePostLiked,
-    onNewComment: handleNewComment
-  });
-
   const { 
     openComments, 
     comments, 
@@ -37,7 +28,8 @@ const FeedPage = () => {
     loadingComments,
     toggleComments,
     handleAddComment,
-    setCommentText 
+    setCommentText,
+    addCommentFromWebSocket // Get the WebSocket handler
   } = useComments();
 
   const {
@@ -53,6 +45,14 @@ const FeedPage = () => {
     saveEdit,
     handleDelete
   } = usePostActions({ posts, setPosts, followingMap, setFollowingMap, user });
+
+  const { wsConnected } = useWebSocket(user, {
+    onNewPost: handleNewPost,
+    onPostUpdated: handlePostUpdated,
+    onPostDeleted: handlePostDeleted,
+    onPostLiked: handlePostLiked,
+    onNewComment: handleNewComment
+  });
 
   useEffect(() => {
     const loadFeed = async () => {
@@ -134,21 +134,36 @@ const FeedPage = () => {
   }
 
   function handleNewComment(commentData) {
+    console.log('WebSocket NEW_COMMENT received:', commentData);
+    
     const { postId, comment, commentsCount } = commentData;
     
-    setComments(prevComments => {
-      const postComments = prevComments[postId] || [];
-      const commentExists = postComments.some(c => c._id === comment._id);
-      if (commentExists) return prevComments;
-      
-      return { ...prevComments, [postId]: [comment, ...postComments] };
-    });
+    addCommentFromWebSocket(postId, comment);
 
     setPosts(prevPosts =>
       prevPosts.map(post =>
         post._id === postId ? { ...post, commentsCount } : post
       )
     );
+
+    if (openComments[postId]) {
+      setTimeout(() => {
+        const commentsSection = document.getElementById(`comments-${postId}`);
+        if (commentsSection) {
+          commentsSection.classList.add('ring-2', 'ring-green-400', 'ring-opacity-50');
+          setTimeout(() => {
+            commentsSection.classList.remove('ring-2', 'ring-green-400', 'ring-opacity-50');
+          }, 500);
+        }
+      }, 100);
+    } else if (comment.author._id !== user?.id) {
+      if (Notification.permission === 'granted') {
+        new Notification('New Comment', {
+          body: `${comment.author.firstName} ${comment.author.lastName} commented on a post`,
+          icon: comment.authorProfile?.avatarUrl || '/avatar-placeholder.png'
+        });
+      }
+    }
   }
 
   if (loading || !user) return <Loading />;
