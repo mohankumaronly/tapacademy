@@ -8,6 +8,7 @@ const CommentsSection = ({
   comments = [], 
   commentText,
   loading,
+  postingComment, 
   onAddComment,
   onCommentChange
 }) => {
@@ -23,8 +24,13 @@ const CommentsSection = ({
   const handleKeyPress = (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault(); 
-      onAddComment(postId);
+      handleAddComment();
     }
+  };
+
+  const handleAddComment = () => {
+    if (!commentText?.trim() || loading || postingComment) return;
+    onAddComment(postId);
   };
 
   useEffect(() => {
@@ -51,15 +57,21 @@ const CommentsSection = ({
             onChange={(e) => onCommentChange(e.target.value)}
             onKeyPress={handleKeyPress}
             className="flex-1 border rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all hover:border-blue-300"
-            placeholder="Add a comment..."
-            disabled={loading}
+            placeholder={postingComment ? "Posting comment..." : "Add a comment..."}
+            disabled={loading || postingComment}
           />
           <button 
-            onClick={() => onAddComment(postId)}
-            disabled={!commentText?.trim() || loading}
-            className="p-2 text-blue-600 hover:bg-blue-50 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-110 duration-200"
+            onClick={handleAddComment}
+            disabled={!commentText?.trim() || loading || postingComment}
+            className={`p-2 text-blue-600 hover:bg-blue-50 rounded-full disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-110 duration-200 relative ${
+              postingComment ? 'cursor-wait' : ''
+            }`}
           >
-            <Send size={18}/>
+            {postingComment ? (
+              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <Send size={18}/>
+            )}
           </button>
         </div>
       </div>
