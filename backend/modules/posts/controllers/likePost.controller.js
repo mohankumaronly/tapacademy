@@ -1,4 +1,6 @@
 const Post = require("../models/post.model");
+const UserProfile = require("../../profile/models/profile.models");
+const User = require("../../auth/models/auth.model");
 const WebSocket = require("ws");
 
 exports.toggleLike = async (req, res) => {
@@ -16,16 +18,45 @@ exports.toggleLike = async (req, res) => {
     }
 
     const alreadyLiked = post.likes.includes(userId);
+    let userProfile = null;
+    let userData = null;
 
     if (alreadyLiked) {
       post.likes.pull(userId);
     } else {
       post.likes.push(userId);
+      userData = await User.findById(userId).select("firstName lastName");
+      userProfile = await UserProfile.findOne({ userId })
+        .select("avatarUrl");
     }
 
     await post.save();
 
-    // 🔥 REALTIME BROADCAST
+    const updatedPost = await Post.findById(postId)
+      .populate("author", "firstName lastName")
+      .populate("authorProfile", "avatarUrl")
+      .populate({
+        path: "likes",
+        select: "firstName lastName",
+        model: "User"
+      })
+      .lean();
+
+    const likeUserIds = (updatedPost.likes || []).map(like => like._id.toString());
+    const likeProfiles = await UserProfile.find({
+      userId: { $in: likeUserIds }
+    }).select("userId avatarUrl").lean();
+
+    const avatarMap = {};
+    likeProfiles.forEach(profile => {
+      avatarMap[profile.userId.toString()] = profile.avatarUrl;
+    });
+
+    updatedPost.likes = (updatedPost.likes || []).map(like => ({
+      ...like,
+      avatarUrl: avatarMap[like._id.toString()] || null
+    }));
+
     global.wss.clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN && client.user) {
         client.send(JSON.stringify({
@@ -34,7 +65,14 @@ exports.toggleLike = async (req, res) => {
             postId: post._id,
             userId,
             liked: !alreadyLiked,
-            likesCount: post.likes.length
+            likesCount: post.likes.length,
+            user: !alreadyLiked ? {
+              _id: userId,
+              firstName: userData?.firstName || req.user.firstName,
+              lastName: userData?.lastName || req.user.lastName,
+              avatarUrl: userProfile?.avatarUrl || null
+            } : null,
+            post: updatedPost
           }
         }));
       }
@@ -44,6 +82,7 @@ exports.toggleLike = async (req, res) => {
       success: true,
       liked: !alreadyLiked,
       likesCount: post.likes.length,
+      data: updatedPost 
     });
 
   } catch (error) {

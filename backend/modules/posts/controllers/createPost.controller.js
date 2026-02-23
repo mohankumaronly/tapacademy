@@ -1,9 +1,3 @@
-const fs = require("fs");
-const Post = require("../models/post.model");
-const cloudinary = require("../../../utils/cloudinary");
-const UserProfile = require("../../profile/models/profile.models");
-const WebSocket = require("ws"); // add this
-
 exports.createPost = async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -55,19 +49,41 @@ exports.createPost = async (req, res) => {
       media,
     });
 
-    //REALTIME BROADCAST (new part)
+    // Get the populated post for response
+    const populatedPost = await Post.findById(post._id)
+      .populate("author", "firstName lastName")
+      .populate("authorProfile", "avatarUrl")
+      .populate({
+        path: "likes",
+        select: "firstName lastName",
+        model: "User"
+      })
+      .lean();
+
+    // Fetch avatar for author
+    const authorProfile = await UserProfile.findOne({ userId: post.author })
+      .select("avatarUrl")
+      .lean();
+
+    // Add avatar URL to author
+    populatedPost.author = {
+      ...populatedPost.author,
+      avatarUrl: authorProfile?.avatarUrl || null
+    };
+
+    // REALTIME BROADCAST
     global.wss.clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN && client.user) {
         client.send(JSON.stringify({
           type: "NEW_POST",
-          data: post
+          data: populatedPost
         }));
       }
     });
 
     res.status(201).json({
       success: true,
-      data: post,
+      data: populatedPost,
     });
 
   } catch (error) {

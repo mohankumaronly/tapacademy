@@ -110,6 +110,9 @@ const FeedPage = () => {
             case 'POST_LIKED':
               handlePostLiked(message.data);
               break;
+            case 'NEW_COMMENT':
+              handleNewComment(message.data);
+              break;
             default:
               console.log('Unknown message type:', message.type);
           }
@@ -200,23 +203,33 @@ const FeedPage = () => {
     setPosts(prevPosts => prevPosts.filter(post => post._id !== postId));
   };
 
-  // Handle post like from WebSocket
+  // Handle post like from WebSocket - UPDATED to handle user data
   const handlePostLiked = (likeData) => {
-    const { postId, userId, liked, likesCount } = likeData;
+    const { postId, userId, liked, likesCount, user: likeUser } = likeData;
     
     setPosts(prevPosts => 
       prevPosts.map(post => {
         if (post._id === postId) {
-          // Update the likes array based on the like action
           let updatedLikes;
+          
           if (liked) {
-            // Add user to likes if not already there
-            updatedLikes = post.likes.includes(userId) 
-              ? post.likes 
-              : [...post.likes, userId];
+            // Check if user already exists in likes (by checking _id)
+            const userExists = post.likes.some(u => u._id === userId);
+            
+            if (!userExists && likeUser) {
+              // Add the new user with their profile data
+              updatedLikes = [...post.likes, {
+                _id: userId,
+                firstName: likeUser.firstName || 'User',
+                lastName: likeUser.lastName || '',
+                avatarUrl: likeUser.avatarUrl || null
+              }];
+            } else {
+              updatedLikes = post.likes;
+            }
           } else {
             // Remove user from likes
-            updatedLikes = post.likes.filter(id => id !== userId);
+            updatedLikes = post.likes.filter(u => u._id !== userId);
           }
           
           return {
@@ -228,13 +241,59 @@ const FeedPage = () => {
       })
     );
 
-    // Optional: Show a small animation on the liked post
     const likeButton = document.getElementById(`like-btn-${postId}`);
     if (likeButton && userId !== user?.id) {
       likeButton.classList.add('ring-2', 'ring-blue-400', 'ring-opacity-50');
       setTimeout(() => {
         likeButton.classList.remove('ring-2', 'ring-blue-400', 'ring-opacity-50');
       }, 500);
+    }
+  };
+
+  // Handle new comment from WebSocket
+  const handleNewComment = (commentData) => {
+    const { postId, comment, commentsCount } = commentData;
+    
+    // Update comments for the post
+    setComments(prevComments => {
+      const postComments = prevComments[postId] || [];
+      // Check if comment already exists to avoid duplicates
+      const commentExists = postComments.some(c => c._id === comment._id);
+      if (commentExists) return prevComments;
+      
+      return {
+        ...prevComments,
+        [postId]: [comment, ...postComments]
+      };
+    });
+
+    // Update comments count in the post
+    setPosts(prevPosts =>
+      prevPosts.map(post =>
+        post._id === postId
+          ? { ...post, commentsCount }
+          : post
+      )
+    );
+
+    // Highlight the comments section if it's open
+    if (openComments[postId]) {
+      const commentsSection = document.getElementById(`comments-${postId}`);
+      if (commentsSection) {
+        commentsSection.classList.add('ring-2', 'ring-green-400', 'ring-opacity-50');
+        setTimeout(() => {
+          commentsSection.classList.remove('ring-2', 'ring-green-400', 'ring-opacity-50');
+        }, 500);
+      }
+    } else {
+      // Show notification for new comment if comments are closed
+      const post = posts.find(p => p._id === postId);
+      if (post && comment.author._id !== user?.id && Notification.permission === 'granted') {
+        new Notification('New Comment', {
+          body: `${comment.author.firstName} ${comment.author.lastName} commented on ${post.author.firstName}'s post`,
+          icon: comment.authorProfile?.avatarUrl || '/avatar-placeholder.png'
+        });
+      }
     }
   };
 
@@ -330,7 +389,6 @@ const FeedPage = () => {
   }, [user]);
 
   const handleLike = async (postId) => {
-    // Optimistic update
     const button = document.getElementById(`like-btn-${postId}`);
     if (button) {
       button.classList.add('scale-125');
@@ -338,7 +396,8 @@ const FeedPage = () => {
     }
 
     const currentUser = user.id;
-    const isCurrentlyLiked = posts.find(p => p._id === postId)?.likes.includes(currentUser);
+    const post = posts.find(p => p._id === postId);
+    const isCurrentlyLiked = post?.likes.some(u => u._id === currentUser);
 
     setPosts(p =>
       p.map(post =>
@@ -346,8 +405,13 @@ const FeedPage = () => {
           ? {
               ...post,
               likes: isCurrentlyLiked
-                ? post.likes.filter(id => id !== currentUser)
-                : [...post.likes, currentUser],
+                ? post.likes.filter(u => u._id !== currentUser)
+                : [...post.likes, {
+                    _id: currentUser,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
+                    avatarUrl: user.avatarUrl
+                  }],
             }
           : post
       )
@@ -364,8 +428,13 @@ const FeedPage = () => {
             ? {
                 ...post,
                 likes: isCurrentlyLiked
-                  ? [...post.likes, currentUser]
-                  : post.likes.filter(id => id !== currentUser),
+                  ? [...post.likes, {
+                      _id: currentUser,
+                      firstName: user.firstName,
+                      lastName: user.lastName,
+                      avatarUrl: user.avatarUrl
+                    }]
+                  : post.likes.filter(u => u._id !== currentUser),
               }
             : post
         )
@@ -445,17 +514,17 @@ const FeedPage = () => {
     const text = commentText[postId];
     if (!text?.trim()) return;
 
+    // Clear input immediately for better UX
+    const commentTextCopy = text;
+    setCommentText(p => ({ ...p, [postId]: "" }));
+
     try {
-      const res = await addComment(postId, text);
-
-      setComments(p => ({
-        ...p,
-        [postId]: [res.data.data, ...(p[postId] || [])],
-      }));
-
-      setCommentText(p => ({ ...p, [postId]: "" }));
+      const res = await addComment(postId, commentTextCopy);
+      // Comment will be added via WebSocket, so we don't need to update state here
     } catch (error) {
       console.error("Error adding comment:", error);
+      // Restore the text if there's an error
+      setCommentText(p => ({ ...p, [postId]: commentTextCopy }));
     }
   };
 
@@ -730,7 +799,7 @@ const FeedPage = () => {
       ) : (
         posts.map((post, index) => {
           const isOwner = String(post.author._id) === String(user.id);
-          const hasLiked = post.likes.includes(user.id);
+          const hasLiked = post.likes?.some(u => u._id === user.id) || false;
 
           return (
             <div 
@@ -867,15 +936,17 @@ const FeedPage = () => {
               <div className="px-4 py-2 flex items-center justify-between border-b border-gray-200">
                 <div className="flex items-center space-x-1">
                   <div className="flex -space-x-1">
-                    {post.likes.slice(0, 3).map((like, i) => (
-                      <div 
-                        key={i} 
-                        className="w-5 h-5 bg-blue-500 rounded-full border-2 border-white animate-in fade-in duration-300"
-                        style={{ animationDelay: `${i * 50}ms` }}
-                      ></div>
+                    {post.likes?.slice(0, 3).map((likeUser, i) => (
+                      <img
+                        key={likeUser._id || i}
+                        src={likeUser.avatarUrl || "/avatar-placeholder.png"}
+                        className="w-5 h-5 rounded-full border-2 border-white object-cover"
+                        alt={`${likeUser.firstName || 'User'}`}
+                        title={`${likeUser.firstName || 'User'} ${likeUser.lastName || ''}`}
+                      />
                     ))}
                   </div>
-                  <span className="text-sm text-gray-500">{post.likes.length} {post.likes.length === 1 ? 'like' : 'likes'}</span>
+                  <span className="text-sm text-gray-500">{post.likes?.length || 0} {post.likes?.length === 1 ? 'like' : 'likes'}</span>
                 </div>
                 <span className="text-sm text-gray-500">{post.commentsCount} {post.commentsCount === 1 ? 'comment' : 'comments'}</span>
               </div>
@@ -910,7 +981,10 @@ const FeedPage = () => {
               </div>
 
               {openComments[post._id] && (
-                <div className="bg-gray-50 p-4 border-t border-gray-200 animate-in slide-in-from-bottom-2 duration-300">
+                <div 
+                  id={`comments-${post._id}`}
+                  className="bg-gray-50 p-4 border-t border-gray-200 animate-in slide-in-from-bottom-2 duration-300"
+                >
                   <div className="flex gap-2 mb-4">
                     <img
                       src={user?.avatarUrl || "/avatar-placeholder.png"}
@@ -969,7 +1043,7 @@ const FeedPage = () => {
                           </div>
                         </div>
                       ))}
-                      {comments[post._id]?.length === 0 && (
+                      {(!comments[post._id] || comments[post._id].length === 0) && (
                         <p className="text-center text-gray-500 py-2">No comments yet</p>
                       )}
                     </div>
