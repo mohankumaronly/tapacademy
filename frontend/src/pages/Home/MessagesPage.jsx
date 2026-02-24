@@ -10,7 +10,6 @@ import {
 import { useAuth } from "../../context/AuthContext";
 import Header from "../../layouts/LayoutComponents/Header";
 
-// Mock data for conversations
 const mockConversations = [
   {
     id: 1,
@@ -80,7 +79,6 @@ const mockConversations = [
   },
 ];
 
-// Mock messages for selected conversation
 const mockMessages = [
   {
     id: 1,
@@ -120,7 +118,6 @@ const mockMessages = [
   },
 ];
 
-// Message Component
 const MessageBubble = ({ message, isMe }) => {
   const statusIcons = {
     sent: <Check size={14} className="text-gray-400" />,
@@ -156,7 +153,6 @@ const MessageBubble = ({ message, isMe }) => {
   );
 };
 
-// Conversation Item Component
 const ConversationItem = ({ conv, isActive, onClick, isMobile }) => {
   return (
     <motion.div
@@ -206,7 +202,6 @@ const ConversationItem = ({ conv, isActive, onClick, isMobile }) => {
   );
 };
 
-// Message Input Component
 const MessageInput = ({ onSend }) => {
   const [message, setMessage] = useState("");
   const [showAttachments, setShowAttachments] = useState(false);
@@ -313,7 +308,6 @@ const MessagesPage = () => {
   
   const messagesEndRef = useRef(null);
 
-  // Handle window resize
   useEffect(() => {
     const handleResize = () => {
       setWindowWidth(window.innerWidth);
@@ -323,12 +317,10 @@ const MessagesPage = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
 
-  // Reset mobile view when selecting chat
   useEffect(() => {
     if (windowWidth < 640 && selectedChat) {
       setShowMobileChat(true);
@@ -350,7 +342,6 @@ const MessagesPage = () => {
     };
     setMessages([...messages, newMessage]);
 
-    // Update last message in conversation
     setConversations(prev =>
       prev.map(conv =>
         conv.id === selectedChat.id
@@ -379,12 +370,10 @@ const MessagesPage = () => {
     <div className="min-h-screen bg-gray-50">
       <Header />
       
-      {/* Fixed spacing for header - adjusted for mobile */}
       <main className="fixed top-14 sm:top-16 md:top-20 bottom-0 left-0 right-0">
         <div className="h-full px-0 sm:px-4 lg:px-8 py-0 sm:py-4">
           <div className="bg-white rounded-none sm:rounded-xl border-0 sm:border sm:border-gray-200 h-full flex overflow-hidden shadow-sm">
             
-            {/* Left Sidebar - Conversations */}
             <AnimatePresence mode="wait">
               {(showMobileSidebar || !isMobile) && (
                 <motion.div
@@ -397,9 +386,7 @@ const MessagesPage = () => {
                     isTablet ? 'w-80' : 'w-96'
                   } border-r border-gray-200 flex flex-col h-full`}
                 >
-                  {/* Header with proper spacing */}
                   <div className="flex-1 flex flex-col overflow-hidden">
-                    {/* Fixed header section */}
                     <div className="flex-shrink-0 p-3 sm:p-4 border-b border-gray-200 bg-white">
                       <div className="flex items-center justify-between mb-3 sm:mb-4">
                         <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Messages</h2>
@@ -409,7 +396,6 @@ const MessagesPage = () => {
                         </button>
                       </div>
                       
-                      {/* Search - now clearly visible */}
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
                         <input
@@ -421,7 +407,6 @@ const MessagesPage = () => {
                         />
                       </div>
 
-                      {/* Filters - Horizontal scroll on mobile */}
                       <div className="flex gap-2 mt-3 overflow-x-auto pb-1 hide-scrollbar">
                         {[
                           { id: "all", label: "All", icon: <MessageCircle size={12} /> },
@@ -444,7 +429,6 @@ const MessagesPage = () => {
                       </div>
                     </div>
 
-                    {/* Scrollable conversations list */}
                     <div className="flex-1 overflow-y-auto bg-white">
                       {filteredConversations.length > 0 ? (
                         filteredConversations.map((conv) => (
@@ -468,7 +452,6 @@ const MessagesPage = () => {
               )}
             </AnimatePresence>
 
-            {/* Main Chat Area */}
             <AnimatePresence mode="wait">
               {selectedChat && (showMobileChat || !isMobile) ? (
                 <motion.div
@@ -478,10 +461,8 @@ const MessagesPage = () => {
                   transition={{ type: "spring", damping: 25, stiffness: 200 }}
                   className="flex-1 flex flex-col bg-white h-full"
                 >
-                  {/* Chat Header */}
                   <div className="flex-shrink-0 px-3 sm:px-6 py-2 sm:py-4 border-b border-gray-200 flex items-center justify-between bg-white">
                     <div className="flex items-center gap-2 sm:gap-3">
-                      {/* Mobile back button */}
                       {isMobile && (
                         <button
                           onClick={handleBackToSidebar}
@@ -528,7 +509,6 @@ const MessagesPage = () => {
                     </div>
                   </div>
 
-                  {/* Messages - Scrollable area */}
                   <div className="flex-1 overflow-y-auto p-3 sm:p-6 space-y-2 bg-gray-50">
                     {messages.map((msg) => (
                       <MessageBubble
@@ -539,7 +519,6 @@ const MessagesPage = () => {
                     ))}
                     <div ref={messagesEndRef} />
 
-                    {/* Typing Indicator */}
                     {selectedChat.typing && (
                       <div className="flex items-center gap-2 text-gray-400 text-xs sm:text-sm">
                         <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gray-200" />
@@ -552,7 +531,6 @@ const MessagesPage = () => {
                     )}
                   </div>
 
-                  {/* Message Input - Fixed at bottom */}
                   <div className="flex-shrink-0">
                     <MessageInput onSend={handleSendMessage} />
                   </div>
@@ -567,7 +545,6 @@ const MessagesPage = () => {
               ) : null}
             </AnimatePresence>
 
-            {/* Right Sidebar - Chat Details */}
             <AnimatePresence>
               {showDetails && selectedChat && !isMobile && (
                 <motion.div
@@ -589,14 +566,12 @@ const MessagesPage = () => {
                       </button>
                     </div>
 
-                    {/* Profile */}
                     <div className="text-center mb-4">
                       <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 mx-auto mb-2" />
                       <h3 className="font-semibold text-sm sm:text-base text-gray-900">{selectedChat.name}</h3>
                       <p className="text-xs sm:text-sm text-gray-500">Active 2h ago</p>
                     </div>
 
-                    {/* Actions */}
                     <div className="space-y-2 mb-4">
                       <button className="w-full px-2 sm:px-3 py-1.5 sm:py-2 text-left text-xs sm:text-sm text-gray-700 hover:bg-gray-50 rounded-lg flex items-center gap-2">
                         <Star size={14} className="sm:hidden" />
@@ -615,7 +590,6 @@ const MessagesPage = () => {
                       </button>
                     </div>
 
-                    {/* Shared Media */}
                     <div>
                       <h5 className="text-[10px] sm:text-xs font-medium text-gray-400 uppercase mb-2">Shared Media</h5>
                       <div className="grid grid-cols-3 gap-1">
@@ -632,7 +606,6 @@ const MessagesPage = () => {
         </div>
       </main>
 
-      {/* Global styles for hiding scrollbar */}
       <style jsx>{`
         .hide-scrollbar::-webkit-scrollbar {
           display: none;
