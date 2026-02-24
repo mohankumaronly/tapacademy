@@ -116,10 +116,12 @@ const ProfilePage = () => {
     isFollowing: false,
   });
 
+  // Modal states with loading
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
   const [followersList, setFollowersList] = useState([]);
   const [followingList, setFollowingList] = useState([]);
+  const [loadingModal, setLoadingModal] = useState(false);
 
   useEffect(() => {
     if (!profileUserId) return;
@@ -196,23 +198,32 @@ const ProfilePage = () => {
     }
   };
 
+  // Updated modal handlers with loading states
   const openFollowers = async () => {
     try {
-      const res = await getFollowers(profileUserId);
-      setFollowersList(res.data.data);
+      setLoadingModal(true);
       setShowFollowers(true);
+      const res = await getFollowers(profileUserId);
+      setFollowersList(res.data.data || []);
     } catch (error) {
       console.error("Error fetching followers:", error);
+      setMessage("Failed to load followers");
+    } finally {
+      setLoadingModal(false);
     }
   };
 
   const openFollowing = async () => {
     try {
-      const res = await getFollowing(profileUserId);
-      setFollowingList(res.data.data);
+      setLoadingModal(true);
       setShowFollowing(true);
+      const res = await getFollowing(profileUserId);
+      setFollowingList(res.data.data || []);
     } catch (error) {
       console.error("Error fetching following:", error);
+      setMessage("Failed to load following");
+    } finally {
+      setLoadingModal(false);
     }
   };
 
@@ -224,11 +235,13 @@ const ProfilePage = () => {
     try {
       const res = await uploadAvatar(file);
       setFormData(p => ({ ...p, avatarUrl: res.data.data.avatarUrl }));
+      setMessage("Avatar updated successfully");
     } catch (error) {
       console.error("Error uploading avatar:", error);
       setMessage("Failed to upload avatar");
     } finally {
       setUploadingAvatar(false);
+      setTimeout(() => setMessage(""), 3000);
     }
   };
 
@@ -472,37 +485,56 @@ const ProfilePage = () => {
                 )}
               </div>
 
-              {/* Stats */}
+              {/* Stats with loading states */}
               <div className="flex gap-6">
-                <button onClick={openFollowers} className="flex items-center gap-2 group">
-                  <span className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-                    {followStats.followers}
-                  </span>
-                  <span className="text-sm text-gray-500 group-hover:text-blue-600 transition-colors">
-                    Followers
-                  </span>
+                <button 
+                  onClick={openFollowers} 
+                  className="flex items-center gap-2 group relative min-w-[80px]"
+                  disabled={loadingModal}
+                >
+                  {loadingModal && showFollowers ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-sm text-gray-500">Loading...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        {followStats.followers}
+                      </span>
+                      <span className="text-sm text-gray-500 group-hover:text-blue-600 transition-colors">
+                        Followers
+                      </span>
+                    </>
+                  )}
                 </button>
-                <button onClick={openFollowing} className="flex items-center gap-2 group">
-                  <span className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
-                    {followStats.following}
-                  </span>
-                  <span className="text-sm text-gray-500 group-hover:text-blue-600 transition-colors">
-                    Following
-                  </span>
+                <button 
+                  onClick={openFollowing} 
+                  className="flex items-center gap-2 group relative min-w-[80px]"
+                  disabled={loadingModal}
+                >
+                  {loadingModal && showFollowing ? (
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-sm text-gray-500">Loading...</span>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="text-xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">
+                        {followStats.following}
+                      </span>
+                      <span className="text-sm text-gray-500 group-hover:text-blue-600 transition-colors">
+                        Following
+                      </span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Simplified Stats Grid - removed GitHub related stats
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <StatCard icon={Users} label="Profile Views" value="156" />
-          <StatCard icon={Award} label="Projects" value="8" />
-          <StatCard icon={Clock} label="Member Since" value="2024" />
-        </div> */}
-
-        {/* Section Navigation - removed projects tab */}
+        {/* Section Navigation */}
         <div className="flex border-b border-gray-200 mb-6 overflow-x-auto">
           {sections.map((section) => {
             const Icon = section.icon;
@@ -711,24 +743,30 @@ const ProfilePage = () => {
         )}
       </AnimatePresence>
 
-      {/* Follow Modals */}
-      {showFollowers && (
-        <FollowListModal
-          title="Followers"
-          users={followersList}
-          onClose={() => setShowFollowers(false)}
-          onOpenProfile={id => navigate(`/profile/${id}`)}
-        />
-      )}
+      {/* Follow Modals with Loading Prop */}
+      <AnimatePresence>
+        {showFollowers && (
+          <FollowListModal
+            title="Followers"
+            users={followersList}
+            onClose={() => setShowFollowers(false)}
+            onOpenProfile={id => navigate(`/profile/${id}`)}
+            loading={loadingModal}
+          />
+        )}
+      </AnimatePresence>
 
-      {showFollowing && (
-        <FollowListModal
-          title="Following"
-          users={followingList}
-          onClose={() => setShowFollowing(false)}
-          onOpenProfile={id => navigate(`/profile/${id}`)}
-        />
-      )}
+      <AnimatePresence>
+        {showFollowing && (
+          <FollowListModal
+            title="Following"
+            users={followingList}
+            onClose={() => setShowFollowing(false)}
+            onOpenProfile={id => navigate(`/profile/${id}`)}
+            loading={loadingModal}
+          />
+        )}
+      </AnimatePresence>
     </EditProfileLayout>
   );
 };
