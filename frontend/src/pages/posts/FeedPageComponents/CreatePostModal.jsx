@@ -12,7 +12,7 @@ const CreatePostModal = ({ isOpen, onClose, user }) => {
   
   const fileInputRef = useRef(null);
   const modalRef = useRef(null);
-
+  
   useEffect(() => {
     const closeModal = e => {
       if (modalRef.current && !modalRef.current.contains(e.target)) {

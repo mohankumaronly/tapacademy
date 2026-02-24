@@ -24,5 +24,10 @@ export const deletePost = (id) => {
   return api.delete(`/post/${id}`);
 };
 
+// export const getUserPosts = () => {
+//   return api.get("/profile/me/posts");
+// };
 
-
+export const getUserPosts = (userId) => {
+  return api.get(`/profile/${userId}/posts`);
+};

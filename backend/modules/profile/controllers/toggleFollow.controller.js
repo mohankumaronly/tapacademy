@@ -11,7 +11,7 @@ exports.toggleFollow = async (req, res) => {
   const existing = await Follow.findOne({
     follower,
     following: userId,
-  });
+  }); 
 
   if (existing) {
     await existing.deleteOne();

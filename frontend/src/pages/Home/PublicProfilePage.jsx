@@ -1,11 +1,12 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   MapPin, GraduationCap, Link as LinkIcon, Github, Linkedin, 
   Briefcase, UserPlus, Check, MessageCircle, MoreHorizontal,
   Award, ExternalLink, Users, Calendar, ArrowLeft, Mail,
-  Building, Globe, ChevronRight, Loader2
+  Building, Globe, ChevronRight, Loader2, Heart, MessageSquare,
+  Share2, Clock, Image, Video
 } from "lucide-react";
 
 import Loading from "../../components/Loading";
@@ -13,29 +14,150 @@ import { getProfileById } from "../../services/profile.service";
 import { getFollowStats, toggleFollow, getFollowers, getFollowing } from "../../services/follow.service";
 import { useAuth } from "../../context/AuthContext";
 import FollowListModal from "../../components/FollowListModal";
+import { getUserPosts, likePost, deletePost, updatePost } from "../../services/post.service";
+import { addComment, getComments } from "../../services/comment.service";
+
+// Import the same components used in FeedPage
+import PostCard from "../posts/FeedPageComponents/PostCard";
+import useComments from "../posts/FeedPageComponents/hooks/useComments";
+import usePostActions from "../posts/FeedPageComponents/hooks/usePostActions";
 
 const PublicProfilePage = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [profile, setProfile] = useState(null);
+  const [posts, setPosts] = useState([]);
+  const [postsLoading, setPostsLoading] = useState(false);
   const [followStats, setFollowStats] = useState({ followers: 0, following: 0, isFollowing: false });
   const [loading, setLoading] = useState(true);
   const [followLoading, setFollowLoading] = useState(false);
   const [error, setError] = useState("");
-  const [activeTab, setActiveTab] = useState("about");
   
+  // Following state for post authors
+  const [followingMap, setFollowingMap] = useState({});
+  
+  // Use the same hooks from FeedPage
+  const { 
+    openComments, 
+    comments, 
+    commentText, 
+    loadingComments,
+    toggleComments,
+    handleAddComment,
+    setCommentText
+  } = useComments();
+
+  const {
+    editingPost,
+    editText,
+    menuOpen,
+    setMenuOpen,
+    setEditingPost,
+    setEditText,
+    handleLike,
+    handleFollow: handlePostFollow,
+    startEdit,
+    saveEdit,
+    handleDelete
+  } = usePostActions({ posts, setPosts, followingMap, setFollowingMap, user });
+
   // Modal states
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
   const [followersList, setFollowersList] = useState([]);
   const [followingList, setFollowingList] = useState([]);
-  const [loadingFollowers, setLoadingFollowers] = useState(false);
   const [loadingModal, setLoadingModal] = useState(false);
 
   const isOwnProfile = user?.id === userId;
 
-  const loadData = useCallback(async () => {
+const loadUserPosts = useCallback(async () => {
+  if (!userId) return;
+  
+  try {
+    setPostsLoading(true);
+    const response = await getUserPosts(userId);
+    console.log("Posts response:", response.data);
+    
+    const transformedPosts = (response.data.data || []).map(post => {
+      
+      // Get the author's avatar URL
+      const authorAvatarUrl = post.author?.avatarUrl || null;
+      
+      // ✅ DON'T transform likes - they already have avatarUrl from the controller!
+      // Just use them as-is
+      const likes = post.likes || [];
+      
+      console.log("Likes from API:", likes); // Should show objects with avatarUrl
+      
+      return {
+        ...post,
+        _id: post._id,
+        text: post.text || '',
+        media: post.media || null,
+        postType: post.postType || 'text',
+        createdAt: post.createdAt,
+        author: {
+          _id: post.author?._id || userId,
+          firstName: post.author?.firstName || 'User',
+          lastName: post.author?.lastName || '',
+          title: post.authorProfile?.headline || profile?.headline || ''
+        },
+        authorProfile: {
+          avatarUrl: authorAvatarUrl
+        },
+        // Use the likes directly from the API
+        likes: likes,
+        commentsCount: post.commentsCount || 0,
+        isPublic: post.isPublic !== false,
+        isNew: false
+      };
+    });
+    
+    console.log("Final transformed posts:", transformedPosts);
+    setPosts(transformedPosts);
+    
+  } catch (err) {
+    console.error("Error loading user posts:", err);
+    setPosts([]);
+  } finally {
+    setPostsLoading(false);
+  }
+}, [userId, profile, user?.id]);
+
+  // Load follow status for post authors
+  useEffect(() => {
+    const loadFollowStatuses = async () => {
+      if (!posts.length || !user?.id) return;
+      
+      const uniqueAuthorIds = [...new Set(posts
+        .map(post => post.author?._id)
+        .filter(id => id && id !== user?.id))];
+      
+      const followStatuses = {};
+      await Promise.all(
+        uniqueAuthorIds.map(async (authorId) => {
+          try {
+            const statsRes = await getFollowStats(authorId);
+            if (statsRes.data?.data) {
+              followStatuses[authorId] = statsRes.data.data.isFollowing || false;
+            }
+          } catch (err) {
+            console.error(`Error checking follow status for ${authorId}:`, err);
+          }
+        })
+      );
+      
+      setFollowingMap(followStatuses);
+    };
+
+    loadFollowStatuses();
+  }, [posts, user?.id]);
+
+  // Load profile data
+  const loadProfileData = useCallback(async () => {
+    if (!userId) return;
+    
     try {
       setLoading(true);
       const [profileRes, statsRes] = await Promise.all([
@@ -43,7 +165,9 @@ const PublicProfilePage = () => {
         getFollowStats(userId)
       ]);
       
+      console.log("Profile data:", profileRes.data);
       setProfile(profileRes.data.data);
+      
       const stats = statsRes.data?.data || {};
       setFollowStats({
         followers: stats.followers || 0,
@@ -57,15 +181,27 @@ const PublicProfilePage = () => {
     }
   }, [userId]);
 
+  // Load all data on mount or userId change
   useEffect(() => {
-    if (userId) loadData();
-  }, [userId, loadData]);
+    if (userId) {
+      loadProfileData();
+    }
+  }, [userId, loadProfileData]);
 
-  const handleFollow = async () => {
+  // Load posts separately when profile is available
+  useEffect(() => {
+    if (userId && profile) {
+      loadUserPosts();
+    }
+  }, [userId, profile, loadUserPosts]);
+
+  // Profile follow handler
+  const handleProfileFollow = async () => {
     if (followLoading) return;
     setFollowLoading(true);
     
     const originalStats = { ...followStats };
+    
     setFollowStats(prev => ({
       ...prev,
       isFollowing: !prev.isFollowing,
@@ -74,20 +210,36 @@ const PublicProfilePage = () => {
 
     try {
       const res = await toggleFollow(userId);
-      const data = res.data?.data || {};
-      setFollowStats(prev => ({
-        ...prev,
-        isFollowing: Boolean(data.isFollowing),
-        followers: data.followers ?? prev.followers
-      }));
-    } catch {
+      
+      if (res.data.success && res.data.data) {
+        const { isFollowing, followersCount } = res.data.data;
+        
+        setFollowStats(prev => ({
+          ...prev,
+          isFollowing: isFollowing,
+          followers: followersCount,
+        }));
+        
+        // Update followingMap for this user
+        setFollowingMap(prev => ({
+          ...prev,
+          [userId]: isFollowing
+        }));
+      }
+    } catch (err) {
+      console.error("Error toggling follow:", err);
       setFollowStats(originalStats);
+      
+      if (err.response?.data?.message) {
+        alert(err.response.data.message);
+      } else {
+        alert("Failed to update follow status. Please try again.");
+      }
     } finally {
       setFollowLoading(false);
     }
   };
 
-  // Modal handlers with loading states
   const openFollowers = async () => {
     try {
       setLoadingModal(true);
@@ -119,14 +271,6 @@ const PublicProfilePage = () => {
       return `${profile.userId.firstName[0]}${profile.userId.lastName[0]}`.toUpperCase();
     }
     return 'U';
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long'
-    });
   };
 
   if (loading) return <Loading />;
@@ -195,20 +339,19 @@ const PublicProfilePage = () => {
                   </div>
 
                   <h1 className="text-xl font-bold text-gray-900">
-                    {profile.userId?.firstName} {profile.userId?.lastName}
+                    {profile?.userId?.firstName} {profile?.userId?.lastName}
                   </h1>
                   <p className="text-gray-500 text-sm mt-1">
-                    {profile.headline || "Professional"}
+                    {profile?.headline || "Professional"}
                   </p>
                   
-                  {profile.location && (
+                  {profile?.location && (
                     <p className="text-xs text-gray-400 mt-2 flex items-center justify-center gap-1">
                       <MapPin size={12} />
                       {profile.location}
                     </p>
                   )}
 
-                  {/* Followers/Following with loading states */}
                   <div className="flex justify-center gap-6 mt-4 pt-4 border-t border-gray-100 w-full">
                     <button 
                       onClick={openFollowers}
@@ -248,10 +391,14 @@ const PublicProfilePage = () => {
                     </button>
                   </div>
 
+                  <div className="mt-2 text-xs text-gray-500">
+                    <span className="font-medium text-gray-900">{posts.length}</span> posts
+                  </div>
+
                   {!isOwnProfile && (
                     <div className="flex gap-2 mt-4 w-full">
                       <button
-                        onClick={handleFollow}
+                        onClick={handleProfileFollow}
                         disabled={followLoading}
                         className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${
                           followStats.isFollowing
@@ -296,12 +443,12 @@ const PublicProfilePage = () => {
                 About
               </h3>
               <p className="text-sm text-gray-600 whitespace-pre-wrap leading-relaxed">
-                {profile.bio || "No bio added yet."}
+                {profile?.bio || "No bio added yet."}
               </p>
             </motion.div>
 
             {/* Skills Section */}
-            {profile.skills?.length > 0 && (
+            {profile?.skills?.length > 0 && (
               <motion.div 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -334,7 +481,7 @@ const PublicProfilePage = () => {
                 Contact Info
               </h3>
               <div className="space-y-3">
-                {profile.github && (
+                {profile?.github && (
                   <a
                     href={profile.github}
                     target="_blank"
@@ -346,7 +493,7 @@ const PublicProfilePage = () => {
                     <ExternalLink size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                   </a>
                 )}
-                {profile.linkedin && (
+                {profile?.linkedin && (
                   <a
                     href={profile.linkedin}
                     target="_blank"
@@ -358,7 +505,7 @@ const PublicProfilePage = () => {
                     <ExternalLink size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                   </a>
                 )}
-                {profile.portfolio && (
+                {profile?.portfolio && (
                   <a
                     href={profile.portfolio}
                     target="_blank"
@@ -370,7 +517,7 @@ const PublicProfilePage = () => {
                     <ExternalLink size={14} className="opacity-0 group-hover:opacity-100 transition-opacity" />
                   </a>
                 )}
-                {!profile.github && !profile.linkedin && !profile.portfolio && (
+                {!profile?.github && !profile?.linkedin && !profile?.portfolio && (
                   <p className="text-gray-400 text-sm italic">No contact information added.</p>
                 )}
               </div>
@@ -379,175 +526,143 @@ const PublicProfilePage = () => {
 
           {/* Right Column - Main Content */}
           <div className="lg:col-span-8 space-y-4">
+            {/* Experience Section */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+              className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow"
             >
-              <div className="border-b border-gray-200 px-6">
-                <nav className="flex space-x-8">
-                  {["about", "experience", "education"].map((tab) => (
-                    <button
-                      key={tab}
-                      onClick={() => setActiveTab(tab)}
-                      className={`py-4 px-1 text-sm font-medium border-b-2 transition-all relative ${
-                        activeTab === tab
-                          ? "border-blue-600 text-blue-600"
-                          : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                      }`}
-                    >
-                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                      {activeTab === tab && (
-                        <motion.div
-                          layoutId="activeTab"
-                          className="absolute bottom-0 left-0 right-0 h-0.5 bg-blue-600"
-                          initial={false}
-                          transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                        />
-                      )}
-                    </button>
-                  ))}
-                </nav>
-              </div>
-
-              <div className="p-6">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeTab}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {activeTab === "about" && (
-                      <div className="space-y-6">
-                        <div>
-                          <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-base">
-                            <Briefcase size={18} className="text-blue-600" />
-                            Experience
-                          </h3>
-                          <div className="bg-gray-50 rounded-lg p-4">
-                            <p className="text-gray-600 text-sm leading-relaxed">
-                              {profile.experience || (
-                                <span className="text-gray-400 italic">No experience added yet.</span>
-                              )}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div>
-                          <h3 className="font-semibold text-gray-900 mb-3 flex items-center gap-2 text-base">
-                            <GraduationCap size={18} className="text-blue-600" />
-                            Education
-                          </h3>
-                          <div className="space-y-4">
-                            {(profile.education || profile.college) ? (
-                              <div className="bg-gray-50 rounded-lg p-4">
-                                {profile.education && (
-                                  <p className="font-medium text-gray-900">{profile.education}</p>
-                                )}
-                                {profile.college && (
-                                  <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
-                                    <Building size={14} className="text-gray-400" />
-                                    {profile.college}
-                                  </div>
-                                )}
-                                {profile.batchName && (
-                                  <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                                    <Calendar size={12} className="text-gray-400" />
-                                    Class of {profile.batchName}
-                                  </div>
-                                )}
-                              </div>
-                            ) : (
-                              <p className="text-gray-400 text-sm italic bg-gray-50 rounded-lg p-4">
-                                No education details added.
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === "experience" && (
-                      <div className="py-4">
-                        <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                            <Briefcase className="text-blue-600" size={24} />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900">Experience</h4>
-                            <div className="mt-3 bg-gray-50 rounded-lg p-4">
-                              <p className="text-sm text-gray-600 leading-relaxed">
-                                {profile.experience || "No experience details added yet."}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {activeTab === "education" && (
-                      <div className="py-4">
-                        <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
-                            <GraduationCap className="text-blue-600" size={24} />
-                          </div>
-                          <div className="flex-1">
-                            <h4 className="font-semibold text-gray-900">Education</h4>
-                            <div className="mt-3 bg-gray-50 rounded-lg p-4">
-                              {profile.education && (
-                                <p className="text-sm text-gray-600">{profile.education}</p>
-                              )}
-                              {profile.college && (
-                                <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
-                                  <Building size={14} className="text-gray-400" />
-                                  {profile.college}
-                                </div>
-                              )}
-                              {profile.batchName && (
-                                <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
-                                  <Calendar size={12} className="text-gray-400" />
-                                  Batch of {profile.batchName}
-                                </div>
-                              )}
-                              {!profile.education && !profile.college && (
-                                <p className="text-gray-400 text-sm italic">
-                                  No education details added yet.
-                                </p>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </motion.div>
-                </AnimatePresence>
+              <h3 className="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+                <Briefcase size={16} className="text-blue-600" />
+                Experience
+              </h3>
+              <div className="bg-gray-50 rounded-lg p-4">
+                <p className="text-gray-600 text-sm leading-relaxed">
+                  {profile?.experience || (
+                    <span className="text-gray-400 italic">No experience added yet.</span>
+                  )}
+                </p>
               </div>
             </motion.div>
 
-            {/* Activity Section */}
+            {/* Education Section */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow"
+            >
+              <h3 className="font-semibold text-gray-700 mb-3 text-sm uppercase tracking-wide flex items-center gap-2">
+                <GraduationCap size={16} className="text-blue-600" />
+                Education
+              </h3>
+              <div className="space-y-4">
+                {(profile?.education || profile?.college) ? (
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    {profile.education && (
+                      <p className="font-medium text-gray-900">{profile.education}</p>
+                    )}
+                    {profile.college && (
+                      <div className="flex items-center gap-2 mt-2 text-sm text-gray-600">
+                        <Building size={14} className="text-gray-400" />
+                        {profile.college}
+                      </div>
+                    )}
+                    {profile.batchName && (
+                      <div className="flex items-center gap-2 mt-1 text-xs text-gray-500">
+                        <Calendar size={12} className="text-gray-400" />
+                        Class of {profile.batchName}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <p className="text-gray-400 text-sm italic bg-gray-50 rounded-lg p-4">
+                    No education details added.
+                  </p>
+                )}
+              </div>
+            </motion.div>
+
+            {/* Posts Section */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow"
+              className="space-y-4"
             >
-              <h3 className="font-semibold text-gray-700 mb-4 text-sm uppercase tracking-wide flex items-center gap-2">
-                <Calendar size={16} className="text-blue-600" />
-                Activity
-              </h3>
-              <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-                <Users size={40} className="mb-3 text-gray-300" />
-                <p className="text-sm">No recent activity to show</p>
-                <p className="text-xs text-gray-400 mt-1">Check back later for updates</p>
+              <div className="flex items-center justify-between px-1">
+                <h3 className="font-semibold text-gray-700 text-sm uppercase tracking-wide flex items-center gap-2">
+                  <MessageSquare size={16} className="text-blue-600" />
+                  Posts
+                </h3>
+                {posts.length > 0 && (
+                  <span className="text-xs text-gray-500">
+                    {posts.length} {posts.length === 1 ? 'post' : 'posts'}
+                  </span>
+                )}
               </div>
+              
+              {postsLoading ? (
+                <div className="flex justify-center py-12 bg-white rounded-xl border border-gray-200">
+                  <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              ) : posts.length > 0 ? (
+                <div className="space-y-4">
+{posts.map((post, index) => {
+  console.log("Post being sent to PostCard:", {
+    id: post._id,
+    author: post.author,
+    avatarUrl: post.author?.avatarUrl
+  });
+  
+  return (
+    <PostCard
+      key={post._id}
+      post={post}
+      index={index}
+      user={user}
+      isOwner={user?.id === post.author?._id}
+      hasLiked={post.likes?.some(like => like._id === user?.id) || false}
+      followingMap={followingMap}
+      menuOpen={menuOpen}
+      editingPost={editingPost}
+      editText={editText}
+      openComments={openComments}
+      comments={comments}
+      commentText={commentText}
+      loadingComments={loadingComments}
+      onMenuToggle={setMenuOpen}
+      onLike={handleLike}
+      onFollow={handlePostFollow}
+      onEditStart={startEdit}
+      onEditSave={saveEdit}
+      onEditCancel={() => setEditingPost(null)}
+      onEditChange={setEditText}
+      onDelete={handleDelete}
+      onToggleComments={toggleComments}
+      onAddComment={handleAddComment}
+      onCommentChange={setCommentText}
+    />
+  );
+})}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-gray-400 bg-white rounded-xl border border-gray-200">
+                  <MessageSquare size={40} className="mb-3 text-gray-300" />
+                  <p className="text-sm">No posts yet</p>
+                  {isOwnProfile && (
+                    <p className="text-xs text-gray-400 mt-1">
+                      Create your first post to share with the community
+                    </p>
+                  )}
+                </div>
+              )}
             </motion.div>
           </div>
         </div>
       </div>
 
-      {/* Follow Modals with Loading State */}
+      {/* Follow Modals */}
       <AnimatePresence>
         {showFollowers && (
           <FollowListModal
