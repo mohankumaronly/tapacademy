@@ -1,8 +1,8 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  MapPin, GraduationCap, Link as LinkIcon, Github, Linkedin, 
+import {
+  MapPin, GraduationCap, Link as LinkIcon, Github, Linkedin,
   Briefcase, UserPlus, Check, MessageCircle, MoreHorizontal,
   Award, ExternalLink, Users, Calendar, ArrowLeft, Mail,
   Building, Globe, ChevronRight, Loader2, Heart, MessageSquare,
@@ -17,7 +17,6 @@ import FollowListModal from "../../components/FollowListModal";
 import { getUserPosts, likePost, deletePost, updatePost } from "../../services/post.service";
 import { addComment, getComments } from "../../services/comment.service";
 
-// Import the same components used in FeedPage
 import PostCard from "../posts/FeedPageComponents/PostCard";
 import useComments from "../posts/FeedPageComponents/hooks/useComments";
 import usePostActions from "../posts/FeedPageComponents/hooks/usePostActions";
@@ -33,15 +32,13 @@ const PublicProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [followLoading, setFollowLoading] = useState(false);
   const [error, setError] = useState("");
-  
-  // Following state for post authors
+
   const [followingMap, setFollowingMap] = useState({});
-  
-  // Use the same hooks from FeedPage
-  const { 
-    openComments, 
-    comments, 
-    commentText, 
+
+  const {
+    openComments,
+    comments,
+    commentText,
     loadingComments,
     toggleComments,
     handleAddComment,
@@ -62,7 +59,6 @@ const PublicProfilePage = () => {
     handleDelete
   } = usePostActions({ posts, setPosts, followingMap, setFollowingMap, user });
 
-  // Modal states
   const [showFollowers, setShowFollowers] = useState(false);
   const [showFollowing, setShowFollowing] = useState(false);
   const [followersList, setFollowersList] = useState([]);
@@ -71,69 +67,63 @@ const PublicProfilePage = () => {
 
   const isOwnProfile = user?.id === userId;
 
-const loadUserPosts = useCallback(async () => {
-  if (!userId) return;
-  
-  try {
-    setPostsLoading(true);
-    const response = await getUserPosts(userId);
-    console.log("Posts response:", response.data);
-    
-    const transformedPosts = (response.data.data || []).map(post => {
-      
-      // Get the author's avatar URL
-      const authorAvatarUrl = post.author?.avatarUrl || null;
-      
-      // ✅ DON'T transform likes - they already have avatarUrl from the controller!
-      // Just use them as-is
-      const likes = post.likes || [];
-      
-      console.log("Likes from API:", likes); // Should show objects with avatarUrl
-      
-      return {
-        ...post,
-        _id: post._id,
-        text: post.text || '',
-        media: post.media || null,
-        postType: post.postType || 'text',
-        createdAt: post.createdAt,
-        author: {
-          _id: post.author?._id || userId,
-          firstName: post.author?.firstName || 'User',
-          lastName: post.author?.lastName || '',
-          title: post.authorProfile?.headline || profile?.headline || ''
-        },
-        authorProfile: {
-          avatarUrl: authorAvatarUrl
-        },
-        // Use the likes directly from the API
-        likes: likes,
-        commentsCount: post.commentsCount || 0,
-        isPublic: post.isPublic !== false,
-        isNew: false
-      };
-    });
-    
-    console.log("Final transformed posts:", transformedPosts);
-    setPosts(transformedPosts);
-    
-  } catch (err) {
-    console.error("Error loading user posts:", err);
-    setPosts([]);
-  } finally {
-    setPostsLoading(false);
-  }
-}, [userId, profile, user?.id]);
+  const loadUserPosts = useCallback(async () => {
+    if (!userId) return;
 
-  // Load follow status for post authors
+    try {
+      setPostsLoading(true);
+      const response = await getUserPosts(userId);
+      console.log("Posts response:", response.data);
+
+      const transformedPosts = (response.data.data || []).map(post => {
+
+        const authorAvatarUrl = post.author?.avatarUrl || null;
+        const likes = post.likes || [];
+
+        console.log("Likes from API:", likes);
+
+        return {
+          ...post,
+          _id: post._id,
+          text: post.text || '',
+          media: post.media || null,
+          postType: post.postType || 'text',
+          createdAt: post.createdAt,
+          author: {
+            _id: post.author?._id || userId,
+            firstName: post.author?.firstName || 'User',
+            lastName: post.author?.lastName || '',
+            title: post.authorProfile?.headline || profile?.headline || ''
+          },
+          authorProfile: {
+            avatarUrl: authorAvatarUrl
+          },
+          likes: likes,
+          commentsCount: post.commentsCount || 0,
+          isPublic: post.isPublic !== false,
+          isNew: false
+        };
+      });
+
+      console.log("Final transformed posts:", transformedPosts);
+      setPosts(transformedPosts);
+
+    } catch (err) {
+      console.error("Error loading user posts:", err);
+      setPosts([]);
+    } finally {
+      setPostsLoading(false);
+    }
+  }, [userId, profile, user?.id]);
+
   useEffect(() => {
     const loadFollowStatuses = async () => {
       if (!posts.length || !user?.id) return;
-      
+
       const uniqueAuthorIds = [...new Set(posts
         .map(post => post.author?._id)
         .filter(id => id && id !== user?.id))];
-      
+
       const followStatuses = {};
       await Promise.all(
         uniqueAuthorIds.map(async (authorId) => {
@@ -147,27 +137,26 @@ const loadUserPosts = useCallback(async () => {
           }
         })
       );
-      
+
       setFollowingMap(followStatuses);
     };
 
     loadFollowStatuses();
   }, [posts, user?.id]);
 
-  // Load profile data
   const loadProfileData = useCallback(async () => {
     if (!userId) return;
-    
+
     try {
       setLoading(true);
       const [profileRes, statsRes] = await Promise.all([
         getProfileById(userId),
         getFollowStats(userId)
       ]);
-      
+
       console.log("Profile data:", profileRes.data);
       setProfile(profileRes.data.data);
-      
+
       const stats = statsRes.data?.data || {};
       setFollowStats({
         followers: stats.followers || 0,
@@ -181,27 +170,24 @@ const loadUserPosts = useCallback(async () => {
     }
   }, [userId]);
 
-  // Load all data on mount or userId change
   useEffect(() => {
     if (userId) {
       loadProfileData();
     }
   }, [userId, loadProfileData]);
 
-  // Load posts separately when profile is available
   useEffect(() => {
     if (userId && profile) {
       loadUserPosts();
     }
   }, [userId, profile, loadUserPosts]);
 
-  // Profile follow handler
   const handleProfileFollow = async () => {
     if (followLoading) return;
     setFollowLoading(true);
-    
+
     const originalStats = { ...followStats };
-    
+
     setFollowStats(prev => ({
       ...prev,
       isFollowing: !prev.isFollowing,
@@ -210,17 +196,16 @@ const loadUserPosts = useCallback(async () => {
 
     try {
       const res = await toggleFollow(userId);
-      
+
       if (res.data.success && res.data.data) {
         const { isFollowing, followersCount } = res.data.data;
-        
+
         setFollowStats(prev => ({
           ...prev,
           isFollowing: isFollowing,
           followers: followersCount,
         }));
-        
-        // Update followingMap for this user
+
         setFollowingMap(prev => ({
           ...prev,
           [userId]: isFollowing
@@ -229,7 +214,7 @@ const loadUserPosts = useCallback(async () => {
     } catch (err) {
       console.error("Error toggling follow:", err);
       setFollowStats(originalStats);
-      
+
       if (err.response?.data?.message) {
         alert(err.response.data.message);
       } else {
@@ -284,7 +269,7 @@ const loadUserPosts = useCallback(async () => {
         </div>
         <p className="text-red-500 font-semibold text-lg mb-2">Oops!</p>
         <p className="text-gray-600 mb-6">{error}</p>
-        <button 
+        <button
           onClick={() => navigate(-1)}
           className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors inline-flex items-center gap-2"
         >
@@ -297,7 +282,6 @@ const loadUserPosts = useCallback(async () => {
 
   return (
     <div className="min-h-screen bg-[#f3f2ef]">
-      {/* Sticky Back Button */}
       <div className="sticky top-0 z-10 bg-[#f3f2ef]/80 backdrop-blur-sm border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <button
@@ -314,9 +298,8 @@ const loadUserPosts = useCallback(async () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Column - Profile Card */}
           <div className="lg:col-span-4 space-y-4">
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm hover:shadow-md transition-shadow"
@@ -344,7 +327,7 @@ const loadUserPosts = useCallback(async () => {
                   <p className="text-gray-500 text-sm mt-1">
                     {profile?.headline || "Professional"}
                   </p>
-                  
+
                   {profile?.location && (
                     <p className="text-xs text-gray-400 mt-2 flex items-center justify-center gap-1">
                       <MapPin size={12} />
@@ -353,7 +336,7 @@ const loadUserPosts = useCallback(async () => {
                   )}
 
                   <div className="flex justify-center gap-6 mt-4 pt-4 border-t border-gray-100 w-full">
-                    <button 
+                    <button
                       onClick={openFollowers}
                       className="text-center hover:opacity-80 transition-opacity group relative"
                       disabled={loadingModal}
@@ -371,7 +354,7 @@ const loadUserPosts = useCallback(async () => {
                         </>
                       )}
                     </button>
-                    <button 
+                    <button
                       onClick={openFollowing}
                       className="text-center hover:opacity-80 transition-opacity group relative"
                       disabled={loadingModal}
@@ -400,11 +383,10 @@ const loadUserPosts = useCallback(async () => {
                       <button
                         onClick={handleProfileFollow}
                         disabled={followLoading}
-                        className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${
-                          followStats.isFollowing
+                        className={`flex-1 px-4 py-2.5 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2 ${followStats.isFollowing
                             ? "bg-gray-100 text-gray-700 hover:bg-gray-200 border border-gray-300"
                             : "bg-blue-600 text-white hover:bg-blue-700 shadow-sm hover:shadow"
-                        }`}
+                          }`}
                       >
                         {followLoading ? (
                           <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
@@ -420,7 +402,7 @@ const loadUserPosts = useCallback(async () => {
                           </>
                         )}
                       </button>
-                      
+
                       <button className="flex-1 px-4 py-2.5 border border-gray-300 rounded-lg font-medium text-sm text-gray-700 hover:bg-gray-50 transition-all flex items-center justify-center gap-2">
                         <MessageCircle size={16} />
                         Message
@@ -431,8 +413,7 @@ const loadUserPosts = useCallback(async () => {
               </div>
             </motion.div>
 
-            {/* About Section */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
@@ -447,9 +428,8 @@ const loadUserPosts = useCallback(async () => {
               </p>
             </motion.div>
 
-            {/* Skills Section */}
             {profile?.skills?.length > 0 && (
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
@@ -469,8 +449,7 @@ const loadUserPosts = useCallback(async () => {
               </motion.div>
             )}
 
-            {/* Contact Info */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
@@ -524,10 +503,8 @@ const loadUserPosts = useCallback(async () => {
             </motion.div>
           </div>
 
-          {/* Right Column - Main Content */}
           <div className="lg:col-span-8 space-y-4">
-            {/* Experience Section */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               className="bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:shadow-md transition-shadow"
@@ -545,8 +522,7 @@ const loadUserPosts = useCallback(async () => {
               </div>
             </motion.div>
 
-            {/* Education Section */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
@@ -583,8 +559,7 @@ const loadUserPosts = useCallback(async () => {
               </div>
             </motion.div>
 
-            {/* Posts Section */}
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
@@ -601,50 +576,50 @@ const loadUserPosts = useCallback(async () => {
                   </span>
                 )}
               </div>
-              
+
               {postsLoading ? (
                 <div className="flex justify-center py-12 bg-white rounded-xl border border-gray-200">
                   <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
                 </div>
               ) : posts.length > 0 ? (
                 <div className="space-y-4">
-{posts.map((post, index) => {
-  console.log("Post being sent to PostCard:", {
-    id: post._id,
-    author: post.author,
-    avatarUrl: post.author?.avatarUrl
-  });
-  
-  return (
-    <PostCard
-      key={post._id}
-      post={post}
-      index={index}
-      user={user}
-      isOwner={user?.id === post.author?._id}
-      hasLiked={post.likes?.some(like => like._id === user?.id) || false}
-      followingMap={followingMap}
-      menuOpen={menuOpen}
-      editingPost={editingPost}
-      editText={editText}
-      openComments={openComments}
-      comments={comments}
-      commentText={commentText}
-      loadingComments={loadingComments}
-      onMenuToggle={setMenuOpen}
-      onLike={handleLike}
-      onFollow={handlePostFollow}
-      onEditStart={startEdit}
-      onEditSave={saveEdit}
-      onEditCancel={() => setEditingPost(null)}
-      onEditChange={setEditText}
-      onDelete={handleDelete}
-      onToggleComments={toggleComments}
-      onAddComment={handleAddComment}
-      onCommentChange={setCommentText}
-    />
-  );
-})}
+                  {posts.map((post, index) => {
+                    console.log("Post being sent to PostCard:", {
+                      id: post._id,
+                      author: post.author,
+                      avatarUrl: post.author?.avatarUrl
+                    });
+
+                    return (
+                      <PostCard
+                        key={post._id}
+                        post={post}
+                        index={index}
+                        user={user}
+                        isOwner={user?.id === post.author?._id}
+                        hasLiked={post.likes?.some(like => like._id === user?.id) || false}
+                        followingMap={followingMap}
+                        menuOpen={menuOpen}
+                        editingPost={editingPost}
+                        editText={editText}
+                        openComments={openComments}
+                        comments={comments}
+                        commentText={commentText}
+                        loadingComments={loadingComments}
+                        onMenuToggle={setMenuOpen}
+                        onLike={handleLike}
+                        onFollow={handlePostFollow}
+                        onEditStart={startEdit}
+                        onEditSave={saveEdit}
+                        onEditCancel={() => setEditingPost(null)}
+                        onEditChange={setEditText}
+                        onDelete={handleDelete}
+                        onToggleComments={toggleComments}
+                        onAddComment={handleAddComment}
+                        onCommentChange={setCommentText}
+                      />
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-gray-400 bg-white rounded-xl border border-gray-200">
