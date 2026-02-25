@@ -11,6 +11,7 @@ const authRouter = require("./modules/auth/routers/auth.routers");
 const profileRouters = require("./modules/profile/routers/profile.routes");
 const postRouter = require("./modules/posts/Routes/Post.Routes");
 const commentRouter = require("./modules/posts/Routes/comment.routes");
+const chatRouter = require("./modules/chat/Routes/chat.routes");
 // const paymentRouter = require("./modules/payment/routers/payment.routes");
 
 const app = express();
@@ -48,6 +49,7 @@ app.use('/api/auth', authRouter);
 app.use('/api/profile', profileRouters);
 app.use('/api/post', postRouter);
 app.use("/api/comments", commentRouter);
+app.use("/api/chat", chatRouter);
 // app.use('/api/payment', paymentRouter);
 
 const getCookie = (cookieString, name) => {
@@ -64,12 +66,9 @@ const getCookie = (cookieString, name) => {
 const startServer = async () => {
   try {
     await databaseConnection(process.env.MONGODB_URL);
-
     const server = http.createServer(app);
-
     const wss = new WebSocket.Server({ server });
     global.wss = wss;
-
     wss.on("connection", (ws, req) => {
       try {
         const token = getCookie(req.headers.cookie, "accessToken");
@@ -80,17 +79,18 @@ const startServer = async () => {
         }
 
         const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
-
         ws.user = decoded;
+        ws.userId = decoded.userId;
 
-        console.log("Realtime authenticated:", ws.user.userId);
+        ws.on("close", () => {
+        });
+
+        ws.on("error", () => {
+        });
 
       } catch (err) {
-        console.log("Socket auth failed");
         ws.close();
       }
-
-      ws.on("close", () => console.log("Realtime disconnected"));
     });
 
     server.listen(PORT, () => {

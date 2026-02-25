@@ -13,11 +13,13 @@ const getPublicProfiles = require('../controllers/getPublicProfiles.controller')
 const uploadAvatar = require('../controllers/uploadAvatar.controller');
 const getMyPosts = require('../controllers/getMyPosts.controller');
 const getUserPosts = require('../controllers/getUserPosts.controller');
+const { getConnections } = require('../controllers/getConnections.controller');
 
 const profileRouters = express.Router();
 
 profileRouters.get("/me", protect, getMyProfile);
 profileRouters.get("/me/posts", protect, getMyPosts);
+profileRouters.get("/connections", protect, getConnections);
 profileRouters.get("/:userId/posts", protect, getUserPosts);
 profileRouters.put("/", protect, updateMyProfile);
 profileRouters.patch("/visibility", protect, toggleVisibility);
