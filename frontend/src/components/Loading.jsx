@@ -10,7 +10,6 @@ const Loading = () => {
             className="fixed inset-0 z-50 flex justify-center items-center bg-gray-50"
         >
             <div className="flex flex-col items-center">
-                {/* Progress Bar */}
                 <div className="w-48 h-1 bg-gray-200 rounded-full overflow-hidden">
                     <motion.div
                         animate={{ 
