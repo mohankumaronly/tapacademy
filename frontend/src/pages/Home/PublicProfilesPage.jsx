@@ -1,7 +1,7 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, UserCircle2, MapPin, ChevronRight, Users2, X, Briefcase, Code } from "lucide-react";
+import { Search, UserCircle2, MapPin, ChevronRight, Users2, X, Briefcase, Eye } from "lucide-react";
 
 import Loading from "../../components/Loading";
 import ExploreCommunityLayout from "../../layouts/ExploreCommunityLayout";
@@ -13,13 +13,16 @@ let debounceTimer;
 const PublicProfilesPage = () => {
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
+  const searchInputRef = useRef(null);
   const { user } = useAuth();
 
   const [profiles, setProfiles] = useState([]);
   const [suggestions, setSuggestions] = useState([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const [pagination, setPagination] = useState({
     currentPage: 1,
     totalPages: 1,
@@ -39,15 +42,28 @@ const PublicProfilesPage = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Initial fetch only once
   useEffect(() => {
-    fetchProfiles("", 1, pagination.limit);
-  }, []);
+    if (!initialLoadDone) {
+      fetchProfiles("", 1, pagination.limit);
+      setInitialLoadDone(true);
+    }
+  }, [initialLoadDone, pagination.limit]);
 
-  const fetchProfiles = async (query, page = 1, limit = pagination.limit) => {
-    setLoading(true);
+  const fetchProfiles = async (query, page = 1, limit = pagination.limit, isLoadMore = false) => {
+    if (!isLoadMore) {
+      setLoading(true);
+    }
+    
     try {
       const res = await getPublicProfiles(query, page, limit);
-      setProfiles(res.data.data);
+      
+      if (isLoadMore) {
+        setProfiles(prev => [...prev, ...res.data.data]);
+      } else {
+        setProfiles(res.data.data);
+      }
+      
       setPagination(res.data.pagination || {
         currentPage: page,
         totalPages: 1,
@@ -59,27 +75,43 @@ const PublicProfilesPage = () => {
     } catch (err) {
       console.error("Failed to fetch profiles:", err);
     } finally {
-      setLoading(false);
+      if (!isLoadMore) {
+        setLoading(false);
+      }
+      setSearchLoading(false);
     }
   };
 
   const handleSearchChange = (value) => {
+    // Update search state immediately
     setSearch(value);
+    
+    // Clear previous timer
     clearTimeout(debounceTimer);
 
+    // If search is empty
     if (!value.trim()) {
       setSuggestions([]);
       setShowDropdown(false);
-      fetchProfiles("", 1, pagination.limit);
+      
+      // Only fetch if we had a previous search and not during initial typing
+      if (search.trim() && !searchLoading) {
+        fetchProfiles("", 1, pagination.limit);
+      }
       return;
     }
 
-    setLoading(true);
+    // Set search loading for suggestions
+    setSearchLoading(true);
+    
+    // Debounce the search
     debounceTimer = setTimeout(async () => {
       try {
         const res = await getPublicProfiles(value, 1, 5); // Get only 5 for suggestions
         setSuggestions(res.data.data);
         setShowDropdown(true);
+        
+        // Update main profiles with search results
         setProfiles(res.data.data);
         setPagination(res.data.pagination || {
           currentPage: 1,
@@ -92,7 +124,7 @@ const PublicProfilesPage = () => {
       } catch (error) {
         console.error("Search failed:", error);
       } finally {
-        setLoading(false);
+        setSearchLoading(false);
       }
     }, 300);
   };
@@ -101,7 +133,13 @@ const PublicProfilesPage = () => {
     setSearch("");
     setSuggestions([]);
     setShowDropdown(false);
+    clearTimeout(debounceTimer);
+    
+    // Fetch initial profiles without showing loading
     fetchProfiles("", 1, pagination.limit);
+    
+    // Focus back on search input
+    searchInputRef.current?.focus();
   };
 
   const openProfile = (id) => {
@@ -111,15 +149,15 @@ const PublicProfilesPage = () => {
   };
 
   const loadMore = () => {
-    if (pagination.hasNextPage) {
-      fetchProfiles(search, pagination.currentPage + 1, pagination.limit);
+    if (pagination.hasNextPage && !loading) {
+      fetchProfiles(search, pagination.currentPage + 1, pagination.limit, true);
     }
   };
 
   const handleSortChange = (e) => {
     const sortValue = e.target.value;
-    // Implement sorting logic here
     const sortedProfiles = [...profiles];
+    
     switch(sortValue) {
       case "alphabetical":
         sortedProfiles.sort((a, b) => 
@@ -127,7 +165,6 @@ const PublicProfilesPage = () => {
         );
         break;
       case "recent":
-        // Sort by createdAt date
         sortedProfiles.sort((a, b) => 
           new Date(b.createdAt) - new Date(a.createdAt)
         );
@@ -153,6 +190,15 @@ const PublicProfilesPage = () => {
         {allSkills.length > 3 && <span className="text-xs text-gray-400">+{allSkills.length - 3}</span>}
       </div>
     );
+  };
+
+  const handleExploreProfile = (e, profileId) => {
+    e.stopPropagation();
+    navigate(`/profile/${profileId}`);
+  };
+
+  const handlePopularTermClick = (term) => {
+    handleSearchChange(term);
   };
 
   if (loading && profiles.length === 0) return <Loading />;
@@ -193,6 +239,7 @@ const PublicProfilesPage = () => {
                 showDropdown ? 'text-blue-500' : 'text-gray-400 group-hover:text-gray-500'
               }`} />
               <input
+                ref={searchInputRef}
                 value={search}
                 onChange={e => handleSearchChange(e.target.value)}
                 onFocus={() => search.trim() && setShowDropdown(true)}
@@ -207,7 +254,7 @@ const PublicProfilesPage = () => {
                   <X size={18} className="text-gray-400" />
                 </button>
               )}
-              {loading && (
+              {searchLoading && (
                 <div className="absolute right-12 top-1/2 -translate-y-1/2">
                   <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
                 </div>
@@ -237,7 +284,10 @@ const PublicProfilesPage = () => {
                         src={profile.avatarUrl || "/avatar-placeholder.png"}
                         className="w-12 h-12 rounded-full object-cover border-2 border-gray-100"
                         alt={profile.user?.firstName || profile.userId?.firstName || 'User'}
-                        onError={(e) => e.target.src = "/avatar-placeholder.png"}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "/avatar-placeholder.png";
+                        }}
                       />
                       <div className="flex-1 min-w-0">
                         <p className="font-semibold text-gray-900 truncate">
@@ -268,7 +318,7 @@ const PublicProfilesPage = () => {
             {["Developer", "Designer", "Mentor", "Student", "Teacher"].map((term) => (
               <button
                 key={term}
-                onClick={() => handleSearchChange(term)}
+                onClick={() => handlePopularTermClick(term)}
                 className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded-full text-gray-600 transition-colors"
               >
                 {term}
@@ -316,7 +366,10 @@ const PublicProfilesPage = () => {
                         src={profile.avatarUrl || "/avatar-placeholder.png"}
                         className="w-28 h-28 rounded-full object-cover border-4 border-gray-50 group-hover:border-blue-100 transition-all"
                         alt={profile.user?.fullName || 'Profile'}
-                        onError={(e) => e.target.src = "/avatar-placeholder.png"}
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "/avatar-placeholder.png";
+                        }}
                       />
                       <div className="absolute bottom-1 right-1 bg-green-500 w-4 h-4 rounded-full border-2 border-white"></div>
                     </div>
@@ -351,13 +404,11 @@ const PublicProfilesPage = () => {
                     <motion.button 
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        // Handle connect action
-                      }}
-                      className="mt-2 w-full py-2.5 bg-gray-50 group-hover:bg-blue-600 group-hover:text-white text-gray-600 rounded-xl text-sm font-semibold transition-colors"
+                      onClick={(e) => handleExploreProfile(e, profile.userId?._id || profile.userId)}
+                      className="mt-2 w-full py-2.5 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-xl text-sm font-semibold transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
                     >
-                      Connect
+                      <Eye size={16} />
+                      Explore Profile
                     </motion.button>
                   </motion.div>
                 ))}
@@ -372,6 +423,14 @@ const PublicProfilesPage = () => {
               <UserCircle2 size={64} className="mx-auto text-gray-300 mb-4" />
               <h2 className="text-2xl font-semibold text-gray-600 mb-2">No profiles found</h2>
               <p className="text-gray-400">Try adjusting your search or filters to find more people</p>
+              {search && (
+                <button
+                  onClick={clearSearch}
+                  className="mt-4 text-blue-600 hover:text-blue-700 font-medium"
+                >
+                  Clear search
+                </button>
+              )}
             </motion.div>
           )}
         </motion.div>
