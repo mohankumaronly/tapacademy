@@ -1,11 +1,6 @@
 import api from "./api";
 
-// Fix: Add userId parameter
 export const getMyProfile = (userId) => {
-  // If userId is provided and it's not the current user's profile,
-  // you might need a different endpoint. But based on your router,
-  // /profile/me always returns the authenticated user's profile
-  // So we'll use the userId for the profile by ID endpoint instead
   if (userId) {
     return getProfileById(userId);
   }
