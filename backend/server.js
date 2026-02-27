@@ -45,7 +45,7 @@ app.get("/api/test", (req, res) => {
   });
 });
 
-app.use('/api/auth', authRouter);
+  app.use('/api/auth', authRouter);
 app.use('/api/profile', profileRouters);
 app.use('/api/post', postRouter);
 app.use("/api/comments", commentRouter);

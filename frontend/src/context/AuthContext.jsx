@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { getMe, logout as logoutService } from "../services/auth.service";
-import { getMyProfile } from "../services/profile.service"; 
-  
+import { getMyProfile } from "../services/profile.service";
+
 const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
@@ -9,49 +9,45 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    checkUser();
-  }, []);
+    let isMounted = true;
 
-  const checkUser = async () => {
-    try {
-      const authRes = await getMe();
-      const basicUser = authRes.data.user;
-      
-      if (basicUser && basicUser.id) {
-        try {
-          const profileRes = await getMyProfile(basicUser.id);
-          const profileData = profileRes.data.data;
-          
-          setUser({
-            ...basicUser,
-            ...profileData,
-            avatarUrl: profileData?.avatarUrl || null,
-            headline: profileData?.headline || '',
-            location: profileData?.location || '',
-            bio: profileData?.bio || '',
-            skills: profileData?.skills || [],
-            github: profileData?.github || '',
-            linkedin: profileData?.linkedin || '',
-            portfolio: profileData?.portfolio || '',
-            education: profileData?.education || '',
-            college: profileData?.college || '',
-            batchName: profileData?.batchName || '',
-            isProfilePublic: profileData?.isProfilePublic ?? true,
-          });
-        } catch (profileError) {
-          console.error("Failed to fetch profile:", profileError);
+    const initAuth = async () => {
+      try {
+        const authRes = await getMe();
+        if (!isMounted) return;
+
+        const basicUser = authRes.data.user;
+
+        if (basicUser && basicUser.id) {
+          try {
+            const profileRes = await getMyProfile(basicUser.id);
+            if (!isMounted) return;
+
+            const profileData = profileRes.data.data;
+
+            setUser({
+              ...basicUser,
+              ...profileData,
+            });
+          } catch (profileError) {
+            if (isMounted) setUser(basicUser);
+          }
+        } else {
           setUser(basicUser);
         }
-      } else {
-        setUser(basicUser);
+      } catch (error) {
+        if (isMounted) setUser(null);
+      } finally {
+        if (isMounted) setLoading(false);
       }
-    } catch (error) {
-      console.error("Auth check failed:", error);
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    initAuth();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const logout = async () => {
     try {
@@ -69,8 +65,7 @@ export const AuthProvider = ({ children }) => {
     user,
     setUser,
     loading,
-    logout,
-    checkUser
+    logout
   };
 
   return (
