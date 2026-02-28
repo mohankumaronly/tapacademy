@@ -29,7 +29,7 @@ const FeedPage = () => {
     toggleComments,
     handleAddComment,
     setCommentText,
-    addCommentFromWebSocket // Get the WebSocket handler
+    addCommentFromWebSocket
   } = useComments();
 
   const {

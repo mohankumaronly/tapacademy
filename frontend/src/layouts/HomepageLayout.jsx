@@ -8,7 +8,7 @@ const HomePageLayout = ({ children }) => {
         <div className="min-h-screen">
             <Header />
             
-            <main className="max-w-6xl mx-auto pt-20 px-4">
+            <main className="max-w-6xl mx-auto pt-20 px">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
                     <LeftSidebar />
                     <div className="lg:col-span-6 space-y-4">
