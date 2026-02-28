@@ -33,7 +33,6 @@ import Loading from "../../components/Loading";
 import InputText from "../../common/InputText";
 import Button from "../../common/Button";
 
-// Google Icon Component
 const GoogleIcon = () => (
     <svg className="w-5 h-5" viewBox="0 0 24 24">
         <path
@@ -166,13 +165,11 @@ const RegisterPage = () => {
             type: 'info'
         });
         
-        // Auto hide after 5 seconds
         setTimeout(() => {
             setPopupMessage({ show: false, message: '', type: 'info' });
         }, 5000);
     };
 
-    // Recent activity feed items (for demo)
     const recentActivities = [
         { user: "Alex Chen", role: "Frontend Dev", action: "shared a new React project", time: "2m ago", avatar: "AC" },
         { user: "Sarah Johnson", role: "ML Engineer", action: "posted about AI advancements", time: "15m ago", avatar: "SJ" },
@@ -184,7 +181,6 @@ const RegisterPage = () => {
         <>
             {isLoading && <Loading />}
             <CommonLayout>
-                {/* Popup Message */}
                 {popupMessage.show && (
                     <motion.div
                         initial={{ opacity: 0, y: -20 }}
@@ -216,15 +212,12 @@ const RegisterPage = () => {
                     className="min-h-screen py-8 px-4"
                 >
                     <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-                        
-                        {/* Left Side - Social Feed Preview */}
                         <motion.div
                             initial={{ opacity: 0, x: -20 }}
                             animate={{ opacity: 1, x: 0 }}
                             transition={{ delay: 0.2 }}
                             className="hidden lg:block space-y-6"
                         >
-                            {/* Platform Header */}
                             <div className="flex items-center gap-2 mb-8">
                                 <div className="w-10 h-10 bg-gradient-to-br from-[#0a66c2] to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
                                     <Briefcase className="w-5 h-5 text-white" />
@@ -235,7 +228,6 @@ const RegisterPage = () => {
                                 </div>
                             </div>
 
-                            {/* Feature Cards */}
                             <div className="grid grid-cols-2 gap-4 mb-6">
                                 <motion.div 
                                     whileHover={{ y: -2 }}
@@ -282,7 +274,6 @@ const RegisterPage = () => {
                                 </motion.div>
                             </div>
 
-                            {/* Live Activity Feed */}
                             <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                                 <div className="p-4 border-b border-slate-100 bg-slate-50">
                                     <div className="flex items-center gap-2">
@@ -318,7 +309,6 @@ const RegisterPage = () => {
                                 </div>
                             </div>
 
-                            {/* Social Proof */}
                             <div className="flex items-center gap-4 text-xs text-slate-500">
                                 <div className="flex items-center gap-1">
                                     <Globe className="w-3 h-3" />
@@ -331,7 +321,6 @@ const RegisterPage = () => {
                             </div>
                         </motion.div>
 
-                        {/* Right Side - Register Form */}
                         <motion.div
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
@@ -339,11 +328,9 @@ const RegisterPage = () => {
                             className="w-full max-w-md mx-auto lg:mx-0 lg:ml-auto"
                         >
                             <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden">
-                                {/* Progress Bar */}
                                 <div className="h-1.5 bg-gradient-to-r from-[#0a66c2] to-blue-400" />
                                 
                                 <div className="p-6 sm:p-8">
-                                    {/* Header */}
                                     <div className="text-center mb-6">
                                         <motion.div
                                             initial={{ scale: 0 }}
@@ -362,9 +349,7 @@ const RegisterPage = () => {
                                         </p>
                                     </div>
 
-                                    {/* Register Form */}
                                     <form onSubmit={handleSubmit} className="space-y-4">
-                                        {/* Name Fields */}
                                         <div className="grid grid-cols-2 gap-3">
                                             <div>
                                                 <label className="block text-xs font-medium text-slate-700 mb-1">
@@ -400,7 +385,6 @@ const RegisterPage = () => {
                                             </div>
                                         </div>
 
-                                        {/* Email Field */}
                                         <div>
                                             <label className="block text-xs font-medium text-slate-700 mb-1">
                                                 Email address
@@ -421,7 +405,6 @@ const RegisterPage = () => {
                                             )}
                                         </div>
 
-                                        {/* Password Field */}
                                         <div>
                                             <label className="block text-xs font-medium text-slate-700 mb-1">
                                                 Password
@@ -452,7 +435,6 @@ const RegisterPage = () => {
                                             )}
                                         </div>
 
-                                        {/* Terms */}
                                         <p className="text-xs text-slate-500">
                                             By joining, you agree to our{" "}
                                             <a href="#" className="text-[#0a66c2] hover:underline">Terms</a>{" "}
@@ -460,7 +442,6 @@ const RegisterPage = () => {
                                             <a href="#" className="text-[#0a66c2] hover:underline">Privacy Policy</a>
                                         </p>
 
-                                        {/* Register Button */}
                                         <button
                                             type="submit"
                                             disabled={isLoading}
@@ -476,7 +457,6 @@ const RegisterPage = () => {
                                             )}
                                         </button>
 
-                                        {/* Divider */}
                                         <div className="relative my-6">
                                             <div className="absolute inset-0 flex items-center">
                                                 <div className="w-full border-t border-slate-200"></div>
@@ -488,7 +468,6 @@ const RegisterPage = () => {
                                             </div>
                                         </div>
 
-                                        {/* Social Buttons */}
                                         <div className="grid grid-cols-3 gap-3">
                                             <button
                                                 type="button"
@@ -505,7 +484,6 @@ const RegisterPage = () => {
                                             >
                                                 <Github size={18} className="text-slate-700" />
                                                 <span className="text-slate-600">GitHub</span>
-                                                {/* Development badge */}
                                                 <span className="absolute -top-2 -right-2 bg-yellow-400 text-[8px] px-1.5 py-0.5 rounded-full font-bold text-yellow-900">
                                                     DEV
                                                 </span>
@@ -519,14 +497,12 @@ const RegisterPage = () => {
                                                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                                                 </svg>
                                                 <span className="text-slate-600">X</span>
-                                                {/* Development badge */}
                                                 <span className="absolute -top-2 -right-2 bg-yellow-400 text-[8px] px-1.5 py-0.5 rounded-full font-bold text-yellow-900">
                                                     DEV
                                                 </span>
                                             </button>
                                         </div>
 
-                                        {/* Development Notice */}
                                         <div className="mt-2 text-center">
                                             <span className="text-[10px] text-slate-400 bg-slate-100 px-2 py-1 rounded-full inline-flex items-center gap-1">
                                                 <Info size={10} />
@@ -534,7 +510,6 @@ const RegisterPage = () => {
                                             </span>
                                         </div>
 
-                                        {/* Sign In Link */}
                                         <p className="text-center text-sm text-slate-600 mt-6">
                                             Already have an account?{" "}
                                             <button
@@ -549,7 +524,6 @@ const RegisterPage = () => {
                                 </div>
                             </div>
 
-                            {/* Mobile Preview - Shows on mobile only */}
                             <div className="mt-6 lg:hidden">
                                 <div className="bg-white rounded-xl border border-slate-200 p-4">
                                     <div className="flex items-center gap-2 mb-3">
