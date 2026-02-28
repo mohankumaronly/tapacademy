@@ -1,10 +1,11 @@
 import api from "./api";
 
-export const createPost = (formData) => {
+export const createPost = (formData, onUploadProgress) => {
   return api.post("/post", formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
+    onUploadProgress,
   });
 };
 
