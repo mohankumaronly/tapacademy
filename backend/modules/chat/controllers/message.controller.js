@@ -61,12 +61,9 @@ exports.sendMessage = async (req, res) => {
           if (client.userId === sender || client.userId === otherParticipantId) {
             client.send(conversationUpdatePayload);
             sentCount++;
-            console.log(`✅ Sent conversation update to: ${client.userId}`);
           }
         }
       });
-
-      console.log(`📊 Conversation update broadcast: ${sentCount} clients notified`);
     }
 
     await Conversation.findByIdAndUpdate(conversationId, {
