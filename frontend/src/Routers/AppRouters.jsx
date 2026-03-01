@@ -28,7 +28,12 @@ import NotificationPage from "../pages/Home/NotificationPage.jsx";
 const AppRouters = () => {
   return (
     <Routes>
-      <Route path="/" element={<LandingPage />} />
+      <Route path="/" 
+      element={
+        <RedirectIfAuth>
+          <LandingPage />
+        </RedirectIfAuth>
+      } />
 
       <Route
         path="/auth/register"
