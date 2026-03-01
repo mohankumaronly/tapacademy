@@ -119,7 +119,7 @@ const login = async (req, res) => {
             });
         }
 
-        const accessTokenExpiry = rememberMe ? "7d" : "15m";
+        const accessTokenExpiry = rememberMe ? "7d" : "24h";
         const accessTokenMaxAge = rememberMe
             ? 7 * 24 * 60 * 60 * 1000
             : 15 * 60 * 1000;
