@@ -56,12 +56,12 @@ const NewsSection = () => {
             </ul>
             <div className="mt-3 pt-2 border-t border-gray-100 text-center">
                 <a 
-                    href="https://news.google.com" 
+                    href="https://mohankumaronlydev.vercel.app" 
                     target="_blank" 
                     rel="noopener noreferrer"
                     className="text-xs text-blue-600 hover:text-blue-800 transition-colors"
                 >
-                    View more news →
+                    About Developer →
                 </a>
             </div>
         </motion.div>
