@@ -1,4 +1,5 @@
 const fs = require('fs');
+const WebSocket = require("ws");
 const cloudinary = require('../../../utils/cloudinary');
 const UserProfile = require("../../profile/models/profile.models");
 const Post = require("../models/post.model");
@@ -91,7 +92,7 @@ exports.createPost = async (req, res) => {
       like: populatedPost.likes?.length || 0,
     };
 
-    if (global.wss && global.wss.clients && WebSocket) {
+    if (global.wss && global.wss.clients) {
       try {
         const message = JSON.stringify({
           type: "NEW_POST",
@@ -103,6 +104,7 @@ exports.createPost = async (req, res) => {
             client.send(message);
           }
         });
+
       } catch (wsError) {
         console.error("WebSocket broadcast error:", wsError);
       }
