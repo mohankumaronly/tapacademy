@@ -9,10 +9,12 @@ const RightSidebar = () => {
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.2 }}
-            className="lg:col-span-3 space-y-4"
+            className="lg:col-span-3"
         >
-            <NewsSection />
-            <FooterLinks />
+            <div className="fixed w-[calc(25%-2rem)] space-y-4">
+                <NewsSection />
+                <FooterLinks />
+            </div>
         </motion.aside>
     );
 };

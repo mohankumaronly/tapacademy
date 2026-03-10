@@ -75,7 +75,6 @@ const Header = () => {
         debounceTimer = setTimeout(async () => {
             try {
                 const res = await getPublicProfiles(value, 1, 5);
-                // Handle the response data structure correctly
                 const profiles = res.data.data || [];
                 setSuggestions(profiles);
                 setShowSearchDropdown(true);
@@ -126,12 +125,10 @@ const Header = () => {
         return user?.avatarUrl || null;
     };
 
-    // Helper function to safely get user ID from profile
     const getUserId = (profile) => {
         return profile.userId?._id || profile.userId || profile._id;
     };
 
-    // Helper function to get user name from profile
     const getUserName = (profile) => {
         if (profile.user?.fullName) return profile.user.fullName;
         if (profile.user?.firstName || profile.user?.lastName) {
@@ -143,12 +140,10 @@ const Header = () => {
         return 'User';
     };
 
-    // Helper function to get user headline
     const getUserHeadline = (profile) => {
         return profile.headline || profile.user?.headline || 'No headline';
     };
 
-    // Helper function to get avatar URL
     const getProfileAvatar = (profile) => {
         return profile.avatarUrl || profile.user?.avatarUrl || "/avatar-placeholder.png";
     };
