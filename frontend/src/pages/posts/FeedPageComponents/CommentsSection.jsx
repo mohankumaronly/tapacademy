@@ -1,6 +1,7 @@
 import { Send } from "lucide-react";
 import { useEffect, useRef } from "react";
 import Comment from "./Comment";
+import userPlaceholder from "../../../assets/images/user.png"
 
 const CommentsSection = ({
   postId,
@@ -46,7 +47,7 @@ const CommentsSection = ({
     >
       <div className="flex gap-2 mb-4">
         <img
-          src={user?.avatarUrl || "/avatar-placeholder.png"}
+          src={user?.avatarUrl || userPlaceholder}
           className="w-8 h-8 rounded-full object-cover"
           alt="Your avatar"
         />
