@@ -1,4 +1,5 @@
 import React from 'react';
+import userPlaceholder from "../../../../../assets/images/user.png";
 
 const ProfileAvatar = ({ avatarUrl, name, size = 'lg', showStatus = false }) => {
   const sizeClasses = {
@@ -10,12 +11,12 @@ const ProfileAvatar = ({ avatarUrl, name, size = 'lg', showStatus = false }) => 
   return (
     <div className="relative mb-4">
       <img
-        src={avatarUrl || "/avatar-placeholder.png"}
+        src={avatarUrl || userPlaceholder}
         className={`${sizeClasses[size]} rounded-full object-cover border-4 border-gray-50 group-hover:border-blue-100 transition-all`}
         alt={name || 'Profile'}
         onError={(e) => {
           e.target.onerror = null;
-          e.target.src = "/avatar-placeholder.png";
+          e.target.src = userPlaceholder;
         }}
       />
       {showStatus && (
