@@ -7,16 +7,26 @@ exports.getFeed = async (req, res) => {
   try {
     const userId = req.user.userId;
 
-    const posts = await Post.find({ isPublic: true })
-      .populate("author", "firstName lastName")
-      .populate("authorProfile", "avatarUrl")
-      .populate({
-        path: "likes",
-        select: "firstName lastName", 
-        model: "User"
-      })
-      .sort({ createdAt: -1 })
-      .lean();
+    const page = Math.max(parseInt(req.query.page) || 1, 1);
+    const limit = Math.min(parseInt(req.query.limit) || 10, 50);
+    const skip = (page - 1) * limit;
+
+    const [posts, totalPosts] = await Promise.all([
+      Post.find({ isPublic: true })
+        .populate("author", "firstName lastName")
+        .populate("authorProfile", "avatarUrl")
+        .populate({
+          path: "likes",
+          select: "firstName lastName", 
+          model: "User"
+        })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+      
+      Post.countDocuments({ isPublic: true })
+    ]);
 
     const allUserIds = new Set();
     
@@ -62,9 +72,24 @@ exports.getFeed = async (req, res) => {
       isFollowingAuthor: followingSet.has(post.author?._id?.toString()),
     }));
 
+    // Calculate pagination metadata
+    const totalPages = Math.ceil(totalPosts / limit);
+    const hasNextPage = page < totalPages;
+    const hasPrevPage = page > 1;
+
     res.json({
       success: true,
-      data: updatedPosts,
+      data: {
+        posts: updatedPosts,
+        pagination: {
+          page,
+          limit,
+          totalPosts,
+          totalPages,
+          hasNextPage,
+          hasPrevPage
+        }
+      }
     });
 
   } catch (error) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 import HomePageLayout from "../../layouts/HomepageLayout";
@@ -11,6 +11,7 @@ import { feed } from "../../services/post.service";
 import useWebSocket from "./FeedPageComponents/hooks/useWebSocket";
 import useComments from "./FeedPageComponents/hooks/useComments";
 import usePostActions from "./FeedPageComponents/hooks/usePostActions";
+import { Virtuoso } from "react-virtuoso";
 
 const FeedPage = () => {
   const navigate = useNavigate();
@@ -19,7 +20,11 @@ const FeedPage = () => {
   const [posts, setPosts] = useState([]);
   const [followingMap, setFollowingMap] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [isCreatePostModalOpen, setIsCreatePostModalOpen] = useState(false);
+  
+  const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(true);
 
   const { 
     openComments, 
@@ -54,26 +59,43 @@ const FeedPage = () => {
     onNewComment: handleNewComment
   });
 
-  useEffect(() => {
-    const loadFeed = async () => {
-      try {
-        const res = await feed();
-        const feedPosts = res.data.data;
-        setPosts(feedPosts);
-        
-        const map = {};
-        feedPosts.forEach(p => {
-          map[p.author._id] = p.isFollowingAuthor || false;
-        });
-        setFollowingMap(map);
-      } catch (error) {
-        console.error("Error loading feed:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const loadFeed = async (pageNumber = 1) => {
+    try {
+      const res = await feed(pageNumber);
+      console.log('Feed response:', res);
+      
+      const newPosts = res.data.data.posts;
+      const pagination = res.data.data.pagination;
 
-    if (user) loadFeed();
+      if (pageNumber === 1) {
+        setPosts(newPosts);
+      } else {
+        setPosts(prev => [...prev, ...newPosts]);
+      }
+
+      setHasNextPage(pagination.hasNextPage);
+      setPage(pageNumber);
+
+      const map = {};
+      newPosts.forEach(p => {
+        map[p.author._id] = p.isFollowingAuthor || false;
+      });
+
+      setFollowingMap(prev => ({ ...prev, ...map }));
+
+    } catch (error) {
+      console.error("Error loading feed:", error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user) {
+      setLoading(true);
+      loadFeed(1);
+    }
   }, [user]);
 
   function handleNewPost(newPost) {
@@ -92,25 +114,25 @@ const FeedPage = () => {
     });
   }
 
-function handlePostUpdated(updatedPost) {
-  if (editingPost === updatedPost._id) return;
+  function handlePostUpdated(updatedPost) {
+    if (editingPost === updatedPost._id) return;
 
-  setPosts(prevPosts =>
-    prevPosts.map(post =>
-      post._id === updatedPost._id
-        ? { ...post, ...updatedPost, isUpdated: true }
-        : post
-    )
-  );
-
-  setTimeout(() => {
-    setPosts(prev =>
-      prev.map(p =>
-        p._id === updatedPost._id ? { ...p, isUpdated: false } : p
+    setPosts(prevPosts =>
+      prevPosts.map(post =>
+        post._id === updatedPost._id
+          ? { ...post, ...updatedPost, isUpdated: true }
+          : post
       )
     );
-  }, 2000);
-}
+
+    setTimeout(() => {
+      setPosts(prev =>
+        prev.map(p =>
+          p._id === updatedPost._id ? { ...p, isUpdated: false } : p
+        )
+      );
+    }, 2000);
+  }
 
   function handlePostDeleted(postId) {
     setPosts(prevPosts => prevPosts.filter(post => post._id !== postId));
@@ -176,54 +198,104 @@ function handlePostUpdated(updatedPost) {
     }
   }
 
+  const handleToggleComments = (postId) => {
+    toggleComments(postId);
+  };
+
   if (loading || !user) return <Loading />;
 
   return (
     <HomePageLayout>
-      <CreatePostCard 
-        user={user}
-        wsConnected={wsConnected}
-        onOpenModal={() => setIsCreatePostModalOpen(true)}
-      />
-
       <CreatePostModal
         isOpen={isCreatePostModalOpen}
         onClose={() => setIsCreatePostModalOpen(false)}
         user={user}
+        onPostCreated={(newPost) => handleNewPost(newPost)}
       />
 
       {posts.length === 0 ? (
         <EmptyFeed />
       ) : (
-        posts.map((post, index) => (
-          <PostCard
-            key={post._id}
-            post={post}
-            index={index}
-            user={user}
-            isOwner={String(post.author._id) === String(user.id)}
-            hasLiked={post.likes?.some(u => u._id === user.id) || false}
-            followingMap={followingMap}
-            menuOpen={menuOpen}
-            editingPost={editingPost}
-            editText={editText}
-            openComments={openComments}
-            comments={comments}
-            commentText={commentText}
-            loadingComments={loadingComments}
-            onMenuToggle={setMenuOpen}
-            onLike={handleLike}
-            onFollow={handleFollow}
-            onEditStart={startEdit}
-            onEditSave={saveEdit}
-            onEditCancel={() => setEditingPost(null)}
-            onEditChange={setEditText}
-            onDelete={handleDelete}
-            onToggleComments={toggleComments}
-            onAddComment={handleAddComment}
-            onCommentChange={setCommentText}
+        <div style={{ height: 'calc(100vh - 64px)' }}>
+          <Virtuoso
+            style={{ 
+              height: '100%',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none',
+            }}
+            className="[&::-webkit-scrollbar]:hidden"
+            data={[{ type: 'create-post' }, ...posts]} 
+            endReached={() => {
+              if (hasNextPage && !loadingMore) {
+                const nextPage = page + 1;
+                setLoadingMore(true);
+                loadFeed(nextPage);
+              }
+            }}
+            overscan={200}
+            components={{
+              Footer: () => (
+                <>
+                  {loadingMore && (
+                    <div className="flex justify-center py-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                    </div>
+                  )}
+                  {!hasNextPage && posts.length > 0 && (
+                    <div className="text-center py-4 text-gray-500">
+                      You've reached the end of the feed!
+                    </div>
+                  )}
+                </>
+              )
+            }}
+            itemContent={(index, item) => {
+              if (index === 0 && item.type === 'create-post') {
+                return (
+                  <div className="mb-4">
+                    <CreatePostCard 
+                      user={user}
+                      wsConnected={wsConnected}
+                      onOpenModal={() => setIsCreatePostModalOpen(true)}
+                    />
+                  </div>
+                );
+              }
+              
+              const post = index === 0 ? posts[index] : posts[index - 1];
+              if (!post) return null;
+              
+              return (
+                <PostCard
+                  post={post}
+                  index={index - 1}
+                  user={user}
+                  isOwner={String(post.author._id) === String(user.id)}
+                  hasLiked={post.likes?.some(u => u._id === user.id) || false}
+                  followingMap={followingMap}
+                  menuOpen={menuOpen}
+                  editingPost={editingPost}
+                  editText={editText}
+                  openComments={openComments}
+                  comments={comments}
+                  commentText={commentText}
+                  loadingComments={loadingComments}
+                  onMenuToggle={setMenuOpen}
+                  onLike={handleLike}
+                  onFollow={handleFollow}
+                  onEditStart={startEdit}
+                  onEditSave={saveEdit}
+                  onEditCancel={() => setEditingPost(null)}
+                  onEditChange={setEditText}
+                  onDelete={handleDelete}
+                  onToggleComments={handleToggleComments}
+                  onAddComment={handleAddComment}
+                  onCommentChange={setCommentText}
+                />
+              );
+            }}
           />
-        ))
+        </div>
       )}
     </HomePageLayout>
   );

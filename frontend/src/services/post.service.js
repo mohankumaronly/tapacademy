@@ -9,9 +9,9 @@ export const createPost = (formData, onUploadProgress) => {
   });
 };
 
-export const feed = () =>{
-  return api.get('/post/feed');
-}
+export const feed = (page = 1, limit = 10) => {
+  return api.get(`/post/feed?page=${page}&limit=${limit}`);
+};
 
 export const likePost = (postId) => {
   return api.post(`/post/${postId}/like`);
@@ -24,10 +24,6 @@ export const updatePost = (id, text) => {
 export const deletePost = (id) => {
   return api.delete(`/post/${id}`);
 };
-
-// export const getUserPosts = () => {
-//   return api.get("/profile/me/posts");
-// };
 
 export const getUserPosts = (userId) => {
   return api.get(`/profile/${userId}/posts`);
