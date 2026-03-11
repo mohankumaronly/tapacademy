@@ -92,13 +92,25 @@ const FeedPage = () => {
     });
   }
 
-  function handlePostUpdated(updatedPost) {
-    setPosts(prevPosts =>
-      prevPosts.map(post =>
-        post._id === updatedPost._id ? { ...updatedPost, isUpdated: true } : post
+function handlePostUpdated(updatedPost) {
+  if (editingPost === updatedPost._id) return;
+
+  setPosts(prevPosts =>
+    prevPosts.map(post =>
+      post._id === updatedPost._id
+        ? { ...post, ...updatedPost, isUpdated: true }
+        : post
+    )
+  );
+
+  setTimeout(() => {
+    setPosts(prev =>
+      prev.map(p =>
+        p._id === updatedPost._id ? { ...p, isUpdated: false } : p
       )
     );
-  }
+  }, 2000);
+}
 
   function handlePostDeleted(postId) {
     setPosts(prevPosts => prevPosts.filter(post => post._id !== postId));
@@ -134,8 +146,6 @@ const FeedPage = () => {
   }
 
   function handleNewComment(commentData) {
-    console.log('WebSocket NEW_COMMENT received:', commentData);
-    
     const { postId, comment, commentsCount } = commentData;
     
     addCommentFromWebSocket(postId, comment);
